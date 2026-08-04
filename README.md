@@ -4,88 +4,201 @@
 
 # FANUC Forge
 
-### Simulador CNC para fresadora con programación estilo FANUC
+### Simulador CNC educativo para fresadora y torno
 
-Editor, interpretación de código G, macros, coordenadas polares y simulación 2D/3D directamente desde el navegador.
+Editor de código, macros, herramientas, ciclos de maquinado y simulación 2D/3D directamente desde el navegador.
 
-[Ver simulador](https://silverpsychoo.github.io/Fanuc-Forge/) · [Reportar un problema](../../issues) · [Solicitar una mejora](../../issues)
+[**Abrir simulador**](https://silverpsychoo.github.io/Fanuc-Forge/) · [Reportar un problema](../../issues) · [Proponer una mejora](../../issues)
 
 </div>
 
 ---
 
-## ¿Qué es FANUC Forge?
+## Acerca del proyecto
 
-**FANUC Forge** es un simulador CNC educativo enfocado en fresadoras y programación estilo FANUC.  
-Permite escribir, validar y visualizar programas sin necesidad de instalar software especializado.
+**FANUC Forge** es un simulador CNC desarrollado para practicar programación estilo FANUC sin depender de software de escritorio.
 
-El proyecto nació como una herramienta para practicar código G, macros, offsets, ciclos de barrenado y trayectorias antes de probarlas en una máquina real.
+El proyecto comenzó como un simulador de fresadora y actualmente incluye dos modos de trabajo:
+
+- **Fresa**, con mesa, pieza prismática, herramientas, offsets y remoción de material.
+- **Torno**, con barra cilíndrica, plato, torreta, perfil X–Z y modelo 3D por revolución.
+
+La aplicación funciona completamente en el navegador y puede utilizarse desde GitHub Pages.
 
 > [!WARNING]
-> Este simulador es una herramienta educativa. No sustituye la validación en máquina, el *dry run*, el modo *single block*, la revisión de offsets, herramientas, sujeción y límites de carrera.
+> FANUC Forge es una herramienta educativa. Antes de ejecutar un programa en una máquina real deben revisarse offsets, herramientas, sujeción, límites de carrera, compensaciones, *single block* y *dry run*.
 
 ---
 
-## Funciones principales
+## Modos de simulación
 
-### Editor CNC
+### Fresadora
 
-- Editor con números de línea.
-- Autocompletado de códigos G, códigos M y comandos Macro.
-- Descripción y ejemplo de cada código.
-- Validación del programa.
-- Historial con `Ctrl + Z` y `Ctrl + Y`.
-- Importación de archivos `.NC`, `.TAP`, `.TXT`, `.CNC` y `.GCODE`.
-- Guardado de programas y proyectos completos.
-
-### Simulación
-
-- Simulación de trayectorias en **2D y 3D**.
-- Rotación, desplazamiento y zoom de la cámara.
-- Visualización de movimientos rápidos y movimientos de corte.
 - Mesa de trabajo configurable.
-- Pieza desplazable dentro de la mesa.
+- Pieza posicionable sobre la mesa.
+- Dimensiones en milímetros o pulgadas.
+- Vista de trayectoria 2D.
+- Simulación de maquinado 3D.
+- Calidad gráfica ajustable.
+- Líneas de rápido y corte independientes.
+- Sistemas de trabajo `G54` a `G59`.
+- Biblioteca de fresas, brocas, puntas bola, planeadores y avellanadores.
+- Tabla de herramientas con números T independientes.
+- Herramientas personalizadas.
 - Entrada y salida de la herramienta fuera del material.
-- Calidad de simulación ajustable.
-- Simulación bloque por bloque.
-- Control de velocidad de ejecución.
-
-### Configuración CNC
-
-- Sistemas de coordenadas `G54` a `G59`.
-- Unidades métricas e imperiales:
-  - `G21` — milímetros.
-  - `G20` — pulgadas.
-- Dimensiones personalizadas de mesa y material.
-- Biblioteca de cortadores métricos e imperiales.
-- Creación de herramientas personalizadas.
-- Correctores de longitud y diámetro.
-
-### Programación compatible
 
 Entre las funciones interpretadas se encuentran:
 
-- Movimientos `G00`, `G01`, `G02` y `G03`.
-- Planos `G17`, `G18` y `G19`.
-- Coordenadas absolutas e incrementales `G90` y `G91`.
-- Coordenadas polares `G15` y `G16`.
-- Rotación del sistema de coordenadas `G68` y `G69`.
-- Ciclos de barrenado `G73` y `G81` a `G89`.
-- Subprogramas con `M98` y `M99`.
-- Llamadas Macro con `G65`.
-- Variables Macro `#1`, `#100`, `#500`, etc.
-- Condiciones `IF`, saltos `GOTO` y ciclos `WHILE / DO / END`.
-- Funciones matemáticas como `SIN`, `COS`, `TAN`, `SQRT`, `ABS`, `ROUND`, `FIX` y `FUP`.
+```text
+G00 G01 G02 G03
+G15 G16
+G17 G18 G19
+G20 G21
+G40 G41 G42
+G43 G49
+G54–G59
+G68 G69
+G73 G81–G89
+G90 G91
+G94
+```
 
-La compatibilidad puede variar según el control FANUC, las opciones instaladas y el fabricante de la máquina.
+También incluye subprogramas, coordenadas polares, rotación del sistema de coordenadas y círculos completos en distintos planos.
+
+### Torno
+
+- Barra maciza o tubular.
+- Diámetro y longitud configurables.
+- Plato y mordazas.
+- Torreta con estaciones de herramienta.
+- Herramientas exteriores, interiores, de ranurado, roscado y barrenado.
+- Vista de perfil X–Z.
+- Modelo 3D generado por revolución.
+- X programado como diámetro.
+- Velocidad de corte constante.
+- Avance por minuto o por revolución.
+- Detección aproximada de colisiones.
+- Visualización de roscas, ranuras y cambios de herramienta.
+
+Funciones disponibles o parcialmente simuladas:
+
+```text
+G00 G01 G02 G03
+G18
+G20 G21
+G40 G41 G42
+G50
+G54–G59
+G70 G71 G72 G73
+G74 G75 G76
+G80 G83
+G90 G91
+G94 G95
+G96 G97
+```
+
+El modo Torno reconoce herramientas en formato:
+
+```gcode
+T0101
+```
+
+donde los primeros dos dígitos identifican la estación y los últimos dos el corrector.
+
+---
+
+## Editor CNC
+
+- Números de línea.
+- Autocompletado de códigos G, códigos M y comandos Macro.
+- Descripción y ejemplo de cada código.
+- Validación antes de ejecutar.
+- Formateo automático.
+- Historial con `Ctrl + Z` y `Ctrl + Y`.
+- Importación mediante selector o arrastrando archivos.
+- Ejecución continua y bloque por bloque.
+- Panel de diagnósticos, variables y traza.
+
+Formatos aceptados:
+
+```text
+.NC
+.TAP
+.TXT
+.CNC
+.GCODE
+.FFCNC
+```
+
+---
+
+## Custom Macro
+
+El intérprete incluye soporte para variables y control de flujo:
+
+```gcode
+#100 = 0
+
+WHILE [#100 GT -10] DO1
+    #100 = [#100 - 1]
+END1
+
+IF [#100 GE -10] GOTO 100
+```
+
+Funciones disponibles:
+
+```text
+SIN COS TAN
+SQRT ABS
+ROUND FIX FUP
+```
+
+También se admiten:
+
+- Variables locales y comunes.
+- `IF / THEN`.
+- `IF / GOTO`.
+- `WHILE / DO / END`.
+- Subprogramas con `M98` y `M99`.
+- Llamadas Macro mediante `G65`.
+
+---
+
+## Archivos de programa y proyecto
+
+### Guardar programa
+
+Genera un archivo CNC con el contenido del editor:
+
+```text
+programa.nc
+```
+
+### Guardar proyecto
+
+Genera un archivo `.ffcnc` con el código y la configuración completa:
+
+- Tipo de máquina.
+- Mesa, pieza o barra.
+- Offsets.
+- Tabla de herramientas.
+- Unidades.
+- Calidad de simulación.
+- Cámara y modo de vista.
+- Preferencias de trayectorias.
+
+Esto permite abrir después el trabajo exactamente como se dejó.
 
 ---
 
 ## Uso en línea
 
-Abre el simulador desde GitHub Pages:
+Abre la versión publicada:
 
 **https://silverpsychoo.github.io/Fanuc-Forge/**
+
+No es necesario instalar Python ni mantener un servidor encendido.
 
 ---
 
@@ -95,13 +208,13 @@ Abre el simulador desde GitHub Pages:
 
 | Acción | Atajo |
 |---|---|
-| Guardar programa | `Ctrl + S` |
-| Abrir programa | `Ctrl + O` |
 | Nuevo programa | `Ctrl + N` |
+| Abrir programa | `Ctrl + O` |
+| Guardar programa | `Ctrl + S` |
 | Deshacer | `Ctrl + Z` |
 | Rehacer | `Ctrl + Y` |
-| Mostrar autocompletado | `Ctrl + Espacio` |
-| Formatear código | `Alt + Shift + F` |
+| Autocompletado | `Ctrl + Espacio` |
+| Formatear | `Alt + Shift + F` |
 
 ### Simulación
 
@@ -111,74 +224,108 @@ Abre el simulador desde GitHub Pages:
 | Validar | `F7` |
 | Bloque por bloque | `F10` |
 | Reiniciar | `Ctrl + R` |
+| Mostrar u ocultar panel inferior | `Ctrl + J` |
 | Maximizar simulador | `Shift + F11` |
 
 ### Cámara 3D
 
-- Arrastrar con botón izquierdo: rotar.
+- Botón izquierdo: rotar.
 - `Shift` + arrastrar: desplazar.
-- Botón derecho + arrastrar: desplazar.
-- Rueda del mouse: zoom.
+- Botón derecho: desplazar.
+- Rueda: acercar o alejar.
 - Doble clic: encuadrar la escena.
 
 ---
 
-## Ejemplo básico
+## Ejemplo de fresadora
 
 ```gcode
 O0001
 G17 G21 G90 G40 G49 G80
-T01 M06
+T03 M06
 G54
 M03 S5000
 
 G00 X0 Y0
-G43 H01 Z20
+G43 H03 Z20
 G01 Z-5 F150
 G01 X50 F300
-G01 Y30
-G01 X0
-G01 Y0
+Y30
+X0
+Y0
 
 G00 Z20
 M05
 M30
 ```
 
+## Ejemplo de torno
+
+```gcode
+O0002
+G18 G21 G90 G95
+G50 S3000
+T0101
+G96 S180 M03
+G54
+
+G00 X28 Z2
+G01 Z0 F0.20
+X0
+G00 X26 Z1
+G01 Z-15
+X20
+Z-25
+X15
+Z-35
+X10
+Z-40
+
+G00 X40 Z10
+M05
+M30
+```
+
 ---
 
-## Estructura del proyecto
+## Estructura general
 
 ```text
-fanuc-forge/
+Fanuc-Forge/
 ├── assets/
-│   └── logo.png
 ├── js/
-│   ├── app.js
-│   ├── expression.js
-│   ├── gcode-data.js
-│   ├── interpreter.js
-│   └── simulator.js
 ├── samples/
 ├── index.html
 ├── styles.css
-└── README.md
+├── README.md
+└── .nojekyll
 ```
+
+---
+
+## Estado del simulador
+
+La interpretación está enfocada en aprendizaje y validación visual. Algunos ciclos, compensaciones y alarmas pueden comportarse de manera distinta según el modelo del control, las opciones instaladas y el fabricante de la máquina.
+
+Las funciones marcadas como **Parcial** o **Referencia** dentro de la aplicación todavía no representan toda la semántica de un control industrial.
+
+---
 
 ## Contribuciones
 
-Las sugerencias y reportes de errores son bienvenidos.
+Para reportar un error:
 
-1. Abre un **Issue** explicando el problema o mejora.
-2. Incluye el programa CNC utilizado.
-3. Describe qué esperabas ver y qué ocurrió.
-4. Adjunta una captura si es posible.
+1. Abre un **Issue**.
+2. Adjunta o pega el programa CNC.
+3. Indica si ocurrió en Fresa o Torno.
+4. Explica el resultado esperado y lo que mostró el simulador.
+5. Agrega una captura cuando sea posible.
 
 ---
 
 ## Autor
 
-Desarrollado por **SilverPsycho**  
+Desarrollado por **SilverPsycho**
 
 GitHub: [@SilverPsychoo](https://github.com/SilverPsychoo)
 
@@ -189,12 +336,3 @@ GitHub: [@SilverPsychoo](https://github.com/SilverPsychoo)
 FANUC Forge es un proyecto independiente con fines educativos.  
 No está afiliado, patrocinado ni respaldado por FANUC Corporation.
 
----
-
-<div align="center">
-
-</div>
-=======
-# Fanuc-Forge
-Simulador CNC educacional 
->>>>>>> 1c59334480521e04721d36c5b40ed720c3b70964
