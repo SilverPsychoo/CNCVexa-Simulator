@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#09131d">
   <title>FANUC Forge — Simulador CNC FANUC</title>
-  <link rel="stylesheet" href="styles.css?v=4.6.0">
+  <link rel="stylesheet" href="styles.css?v=5.3.0">
 </head>
 <body>
   <div id="appRoot" class="app-root">
@@ -77,6 +77,10 @@
         </div>
       </nav>
 
+      <div class="machine-switch" aria-label="Tipo de máquina">
+        <button type="button" data-machine="mill" class="active"><span class="machine-icon">▦</span>Fresa</button>
+        <button type="button" data-machine="lathe"><span class="machine-icon">◉</span>Torno</button>
+      </div>
       <div class="quick-actions">
         <button class="icon-button" data-action="undo" title="Deshacer (Ctrl+Z)">↶</button>
         <button class="icon-button" data-action="redo" title="Rehacer (Ctrl+Y)">↷</button>
@@ -130,6 +134,8 @@
             <label class="mini-toggle"><input id="showCuts" type="checkbox" checked><span></span>Corte</label>
             <label class="mini-toggle"><input id="showGrid" type="checkbox" checked><span></span>Cuadrícula</label>
             <label class="mini-toggle"><input id="showTable" type="checkbox" checked><span></span>Mesa</label>
+            <label class="mini-toggle lathe-only"><input id="showTurret" type="checkbox" checked><span></span>Torreta</label>
+            <label class="mini-toggle lathe-only safety-toggle"><input id="stopOnCollision" type="checkbox" checked><span></span>Parar en colisión</label>
             <label class="speed-control">Velocidad<input id="speedRange" type="range" min="1" max="100" value="35"><output id="speedOut">35×</output></label>
             <button class="icon-button expand-button" data-action="maximizeSimulation" title="Maximizar simulador">⛶</button>
           </header>
@@ -189,7 +195,7 @@
       <span id="offsetSummary">G54 X0 Y0 Z0</span>
       <span id="toolSummary">T3 Ø10 H50</span>
       <span class="status-spacer"></span>
-      <span>FANUC Forge Studio v4.6</span>
+      <span>FANUC Forge Studio v5.3</span>
     </footer>
   </div>
 
@@ -252,6 +258,37 @@
     </form>
   </dialog>
 
+
+  <dialog id="latheStockDialog" class="app-dialog wide-dialog">
+    <form method="dialog" class="dialog-card">
+      <header><div><span class="eyebrow">TORNO · MATERIA PRIMA</span><h2>Barra, plato y unidades</h2></div><button class="dialog-close" value="cancel">×</button></header>
+      <div class="dialog-body">
+        <div class="workspace-header"><div><strong>Modelo de revolución X–Z</strong><span>X se programa como diámetro y Z0 corresponde a la cara frontal de la pieza.</span></div><label class="unit-selector">Unidad<select id="latheUnit"><option value="mm">Milímetros (mm)</option><option value="in">Pulgadas (in)</option></select></label></div>
+        <div class="form-section"><h3>Materia prima</h3><div class="form-grid four"><label>Diámetro exterior <span class="lathe-unit-mark">(mm)</span><input id="latheDiameter" class="lathe-length" type="number" min="1" step="1" value="60"></label><label>Diámetro interior <span class="lathe-unit-mark">(mm)</span><input id="latheBore" class="lathe-length" type="number" min="0" step="1" value="0"></label><label>Longitud <span class="lathe-unit-mark">(mm)</span><input id="latheLength" class="lathe-length" type="number" min="1" step="1" value="120"></label><label>Resolución del perfil <span class="lathe-unit-mark">(mm)</span><input id="latheResolution" class="lathe-length" type="number" min="0.2" step="0.1" value="1"></label></div></div>
+        <div class="form-section"><h3>Sujeción</h3><div class="form-grid three"><label>Longitud fuera del plato <span class="lathe-unit-mark">(mm)</span><input id="latheStickout" class="lathe-length" type="number" min="1" step="1" value="100"></label><label>Longitud visual del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckLength" class="lathe-length" type="number" min="5" step="1" value="30"></label><label>Calidad<select id="latheQuality"><option value="low">Baja</option><option value="medium">Media</option><option value="high" selected>Alta</option><option value="ultra">Ultra</option></select></label></div><p class="help-text">La barra se extiende desde Z0 hacia Z negativo. El tramo dentro del plato se muestra únicamente como referencia de sujeción.</p></div>
+        <div class="form-section"><h3>Cero de trabajo</h3><div class="form-grid two"><label>Origen Z<select id="latheZeroMode"><option value="front" selected>Cara frontal (Z0)</option><option value="back">Cara posterior</option></select></label><label>Offset G54 en X<input id="latheOffsetX" type="number" step="0.001" value="0"></label></div><p class="help-text">La línea central del husillo corresponde a X0. En programación por diámetro, X60 coloca la punta sobre una barra de Ø60.</p></div>
+        <div class="form-section"><h3>Seguridad y colisiones</h3><label class="check-row"><input id="latheSafetyEnabled" type="checkbox" checked><span>Analizar movimientos rápidos, sobrecarreras, cruce de X0 y aproximación al plato</span></label><div class="form-grid four"><label>Holgura del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckClearance" class="lathe-length" type="number" min="0" step="0.5" value="2"></label><label>Holgura del portaherramientas <span class="lathe-unit-mark">(mm)</span><input id="latheHolderClearance" class="lathe-length" type="number" min="0" step="0.5" value="4"></label><label>Límite absoluto X <span class="lathe-unit-mark">(mm)</span><input id="latheXLimit" class="lathe-length" type="number" min="1" step="10" value="400"></label><label>Margen Z fuera de pieza <span class="lathe-unit-mark">(mm)</span><input id="latheZMargin" class="lathe-length" type="number" min="10" step="10" value="250"></label></div><p class="help-text">La detección es preventiva y aproximada. Una alarma detiene la animación si “Parar en colisión” está activado.</p></div>
+      </div>
+      <footer><button value="cancel">Cancelar</button><button id="applyLatheStockBtn" value="default" class="primary">Aplicar configuración</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="latheToolDialog" class="app-dialog tool-manager-dialog">
+    <form method="dialog" class="dialog-card">
+      <header><div><span class="eyebrow">TORNO · TORRETA</span><h2>Herramientas y correctores</h2></div><button class="dialog-close" value="cancel">×</button></header>
+      <div class="dialog-body tool-manager-body">
+        <aside class="tool-slots-panel"><div class="tool-slots-heading"><div><strong>Estaciones</strong><span>T0101 = herramienta 01, corrector 01</span></div></div><div id="latheToolSlotList" class="tool-slot-list"></div></aside>
+        <section class="tool-editor-panel">
+          <div class="tool-standard-note"><strong>La estación y el corrector son independientes.</strong><span>El formato T0101 selecciona la herramienta 01 y activa el corrector 01.</span></div>
+          <div class="lathe-tool-preview"><div id="latheToolGlyph" class="lathe-tool-glyph od"></div><div><strong id="latheToolTitle">T0101 · Buril exterior</strong><span id="latheToolDescription">Cilindrado y refrentado exterior.</span></div></div>
+          <div class="form-section"><h3>Asignación</h3><div class="form-grid four"><label>Estación T<input id="latheToolNumber" type="number" min="1" max="99" value="1" readonly></label><label>Corrector<input id="latheToolOffset" type="number" min="0" max="99" value="1"></label><label>Tipo<select id="latheToolType"><option value="od">Buril exterior</option><option value="finish">Acabado exterior</option><option value="face">Refrentado</option><option value="groove">Ranurado</option><option value="thread">Roscado</option><option value="boring">Mandrinado</option><option value="drill">Broca axial</option></select></label><label>Orientación<select id="latheToolOrientation"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label></div></div>
+          <div class="form-section"><h3>Geometría</h3><div class="form-grid three"><label>Nombre<input id="latheToolName" value="Buril exterior 80°"></label><label>Radio de punta <span class="lathe-tool-unit">(mm)</span><input id="latheNoseRadius" type="number" min="0" step="0.01" value="0.8"></label><label>Ancho de inserto <span class="lathe-tool-unit">(mm)</span><input id="latheInsertWidth" type="number" min="0.1" step="0.1" value="6"></label></div></div>
+        </section>
+      </div>
+      <footer><button value="cancel">Cancelar</button><button id="applyLatheToolBtn" value="default" class="primary">Guardar estación</button></footer>
+    </form>
+  </dialog>
+
   <dialog id="variableDialog" class="app-dialog small-dialog">
     <form method="dialog" class="dialog-card">
       <header><div><span class="eyebrow">MACRO B</span><h2>Asignar variable</h2></div><button class="dialog-close" value="cancel">×</button></header>
@@ -269,6 +306,6 @@
   </dialog>
 
   <div id="toast" class="toast hidden"></div>
-  <script type="module" src="js/app.js?v=4.6.0"></script>
+  <script type="module" src="js/app.js?v=5.3.0"></script>
 </body>
 </html>

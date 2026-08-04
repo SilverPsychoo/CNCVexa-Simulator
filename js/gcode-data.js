@@ -162,6 +162,41 @@ export const CODES=[
   E('O','Número de programa','Identificador de programa o subprograma.','O1000','Palabras','full')
 ];
 
+export const LATHE_CODES=[
+  E('G00','Posicionamiento rápido X–Z','Movimiento rápido del torno. X se interpreta como diámetro y Z como longitud.','G00 X65 Z5','Movimiento torno','full'),
+  E('G01','Interpolación lineal X–Z','Cilindrado, refrentado o movimiento lineal con avance F.','G01 X40 Z-50 F0.25','Movimiento torno','full'),
+  E('G02','Arco horario en G18','Interpolación circular horaria en el plano XZ con I/K o R.','G02 X50 Z-30 R10','Movimiento torno','full'),
+  E('G03','Arco antihorario en G18','Interpolación circular antihoraria en el plano XZ con I/K o R.','G03 X40 Z-40 R8','Movimiento torno','full'),
+  E('G18','Plano XZ','Plano principal para interpolación circular en torno.','G18','Preparación torno','full'),
+  E('G20','Programación en pulgadas','Selecciona unidades imperiales.','G20','Unidades','full'),
+  E('G21','Programación en milímetros','Selecciona unidades métricas.','G21','Unidades','full'),
+  E('G28','Retorno a referencia','Retorno a referencia, comúnmente con U0 W0.','G28 U0 W0','Coordenadas torno','partial'),
+  E('G40','Cancelar compensación de punta','Cancela la compensación de radio de punta.','G40','Compensación torno','full'),
+  E('G41','Compensación izquierda de punta','Desplaza la trayectoria según el radio de punta y la orientación configurada.','G41','Compensación torno','partial'),
+  E('G42','Compensación derecha de punta','Desplaza la trayectoria al lado opuesto usando radio de punta y orientación.','G42','Compensación torno','partial'),
+  E('G50','Límite de RPM','Establece el límite de velocidad del husillo, especialmente con G96.','G50 S3000','Husillo torno','full'),
+  E('G54','Cero de trabajo 1','Selecciona el primer sistema de coordenadas.','G54','Coordenadas torno','full'),
+  E('G70','Ciclo de acabado','Recorre el perfil definido entre los bloques P y Q.','G70 P100 Q200','Ciclos torno','full'),
+  E('G71','Desbaste longitudinal','Elimina material exterior/interior siguiendo el perfil P–Q. Compatible con formato de dos bloques.','G71 U2 R1\nG71 P100 Q200 U0.4 W0.1 F0.25','Ciclos torno','partial'),
+  E('G72','Desbaste frontal','Desbaste por caras con formato de dos bloques. Acepta decimales o valores enteros en milésimas como W1000 = 1.000 mm.','G72 W1000 R100\nG72 P100 Q200 U0.03 W0.03 F0.01','Ciclos torno','full'),
+  E('G73','Repetición de patrón','Repite un contorno P–Q reduciendo el material U/W durante R pasadas y conserva sobrematerial de acabado.','G73 U0.5 W0.2 R3\nG73 P100 Q200 U0.4 W0.01 F0.01','Ciclos torno','full'),
+  E('G74','Ranurado frontal / peck','Simula taladrado intermitente y ranurado frontal por incrementos P/Q.','G74 R1\nG74 X20 Z-30 P2000 Q5000 F0.1','Ciclos torno','partial'),
+  E('G75','Ranurado por pecks','Ranurado exterior/interior: X es el diámetro final, Z la posición final, P el peck en X y Q el paso lateral en Z.','G00 X30 Z-6\nG75 X20 Z-10 P0.1 Q0.15 F0.02','Ciclos torno','full'),
+  E('G76','Roscado múltiple','Acepta el formato de un bloque X Z I K D A F y el formato FANUC de dos bloques P/Q/R. K/P definen profundidad, D/Q la primera pasada y F el paso.','G76 X18.2 Z-18 I-0.01 K900 D100 A60 F1.5\n\nG76 P040060 Q100 R0.02\nG76 X18.2 Z-18 P900 Q160 F1.5','Ciclos torno','full'),
+  E('G83','Barrenado axial profundo','Ciclo de pecks sobre el eje Z. Z es la profundidad, Q el peck, R la retracción y P la permanencia en milisegundos.','G00 X0 Z1\nG83 Z-50 Q2000 R1 P1000 F0.08\nG80','Ciclos torno','full'),
+  E('G90','Absoluto / ciclo de torneado','En este simulador selecciona coordenadas absolutas; algunos controles de torno usan G90 como ciclo simple.','G90','Coordenadas torno','partial'),
+  E('G91','Incremental','Selecciona coordenadas incrementales; U/W también permiten incrementos por eje.','G91','Coordenadas torno','full'),
+  E('G94','Avance por minuto','Selecciona avance por minuto en esta versión.','G94','Avance torno','full'),
+  E('G95','Avance por revolución','Selecciona avance por revolución.','G95 F0.2','Avance torno','full'),
+  E('G96','Velocidad de corte constante','Ajusta las RPM según el diámetro actual y el valor S.','G50 S3000\nG96 S180 M03','Husillo torno','full'),
+  E('G97','RPM constantes','Cancela G96 y usa S como RPM directas.','G97 S1200 M03','Husillo torno','full'),
+  E('T0101','Herramienta y corrector','Selecciona estación 01 y corrector 01 de la torreta.','T0101','Herramientas torno','full'),
+  E('U','Incremento en X diámetro','Movimiento incremental del eje X expresado en diámetro.','U-2.0','Palabras torno','full'),
+  E('W','Incremento en Z','Movimiento incremental del eje Z.','W-5.0','Palabras torno','full'),
+  E('X','Diámetro programado','En torno, X representa normalmente el diámetro de la pieza.','X40.0','Palabras torno','full'),
+  E('Z','Posición longitudinal','Posición respecto a la cara de referencia.','Z-50.0','Palabras torno','full')
+];
+
 export const CODE_MAP=new Map(CODES.map(c=>[c.code,c]));
 export const CATEGORIES=[...new Set(CODES.map(c=>c.category))].sort((a,b)=>a.localeCompare(b,'es'));
 export const SUPPORT_LABELS={full:'Simulado',partial:'Parcial',reference:'Referencia'};

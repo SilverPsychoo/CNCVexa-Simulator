@@ -5,6 +5,7 @@ export class StockSimulator{
   constructor(canvas){
     this.canvas=canvas;
     this.ctx=canvas.getContext('2d');
+    this.active=true;
     this.view='free';
     this.viewMode='3d';
     this.renderQuality='medium';
@@ -35,8 +36,10 @@ export class StockSimulator{
     }[level]||{tileBudget:3200,circleSegments:18,pathStep:.65,markLimit:360};
   }
 
+  setActive(value=true){this.active=!!value;if(this.active)this.resize();}
+
   bindCameraControls(){
-    this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    this.canvas.addEventListener('contextmenu',e=>{if(this.active)e.preventDefault();});
     this.canvas.addEventListener('pointerdown',e=>{
       this.canvas.setPointerCapture(e.pointerId);
       this.drag={x:e.clientX,y:e.clientY,mode:this.viewMode==='2d'?'pan':((e.button===2||e.shiftKey||e.ctrlKey)?'pan':'rotate')};
@@ -60,12 +63,13 @@ export class StockSimulator{
     this.canvas.addEventListener('pointerup',release);
     this.canvas.addEventListener('pointercancel',release);
     this.canvas.addEventListener('wheel',e=>{
+      if(!this.active)return;
       e.preventDefault();
       if(this.viewMode==='2d') this.camera.zoom=clamp(this.camera.zoom*Math.exp(-e.deltaY*.0012),.35,10);
       else this.camera.zoom=clamp(this.camera.zoom*Math.exp(-e.deltaY*.0012),.15,12);
       this.draw();
     },{passive:false});
-    this.canvas.addEventListener('dblclick',()=>this.fitView(this.viewMode==='2d'?'stock':'scene'));
+    this.canvas.addEventListener('dblclick',()=>{if(this.active)this.fitView(this.viewMode==='2d'?'stock':'scene');});
   }
 
   configure(cfg){
@@ -182,6 +186,7 @@ export class StockSimulator{
   }
 
   resize(){
+    if(!this.active)return;
     const r=this.canvas.getBoundingClientRect(),limit={low:1,medium:1.5,high:2,ultra:2.5}[this.renderQuality]||1.5,dpr=Math.min(limit,window.devicePixelRatio||1);
     this.canvas.width=Math.max(1,Math.round(r.width*dpr));
     this.canvas.height=Math.max(1,Math.round(r.height*dpr));
@@ -249,7 +254,7 @@ export class StockSimulator{
   }
 
   draw(){
-    if(!this.ctx||!this.w||!this.h)return;
+    if(!this.active||!this.ctx||!this.w||!this.h)return;
     if(this.viewMode==='2d'){this.prepare2D(this.focusTarget==='scene'?'scene':this.focusTarget);this.draw2D();return;}
     this.renderScale=this.computeScale();
     const c=this.ctx;c.clearRect(0,0,this.w,this.h);
