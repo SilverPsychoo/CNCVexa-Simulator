@@ -1,4 +1,4 @@
-import {evaluateExpression,evaluateCondition} from './expression.js?v=5.3.0';
+import {evaluateExpression,evaluateCondition} from './expression.js?v=5.4.0';
 
 const stripComments=line=>line.replace(/\([^)]*\)/g,'').replace(/;.*/,'').trim().toUpperCase();
 const unitFactor=state=>state.units==='G20'?25.4:1;
@@ -61,9 +61,9 @@ export class LatheInterpreter{
   }
   safetyForMove(from,to,type,tool,line,extra={}){
     const stock=this.config.stock||{},safety=stock.safety||{},issues=[];if(safety.enabled===false)return issues;
-    const chuckClearance=Math.max(0,Number(safety.chuckClearance??2)),holderClearance=Math.max(0,Number(safety.holderClearance??4)),length=Math.max(0,stock.length||0),chuckRadius=(stock.diameter||0)*.68;
+    const chuckClearance=Math.max(0,Number(safety.chuckClearance??2)),holderClearance=Math.max(0,Number(safety.holderClearance??4)),length=Math.max(0,stock.length||0),stickout=Math.max(0,Math.min(Number(stock.stickout??length),length)),chuckRadius=Math.max((stock.diameter||0)*.72,34);
     if(Math.min(from.x,to.x)<-EPS)issues.push({severity:'error',code:'X_NEGATIVE',message:'La trayectoria cruza por debajo de la línea central X0'});
-    if(Math.min(from.z,to.z)<-length-chuckClearance&&Math.min(Math.abs(from.x),Math.abs(to.x))/2<chuckRadius+holderClearance)issues.push({severity:'error',code:'CHUCK',message:`Posible colisión de ${tool.name||'la herramienta'} con el plato`});
+    if(Math.min(from.z,to.z)<-stickout-chuckClearance&&Math.min(Math.abs(from.x),Math.abs(to.x))/2<chuckRadius+holderClearance)issues.push({severity:'error',code:'CHUCK',message:`Posible colisión de ${tool.name||'la herramienta'} con el plato o las mordazas`});
     if(type==='G00'&&!extra.cycle&&this.pointInsideInitialStock(to)&&this.segmentHitsInitialStock(from,to))issues.push({severity:'warning',code:'RAPID_STOCK',message:'Movimiento rápido atraviesa el volumen inicial de la barra'});
     const xLimit=Number(safety.xLimit||400),zMin=Number(safety.zMin??-(length+250)),zMax=Number(safety.zMax??250);
     if(Math.max(Math.abs(from.x),Math.abs(to.x))>xLimit)issues.push({severity:'error',code:'X_TRAVEL',message:`Sobrecarrera aproximada del eje X (límite ±${xLimit} mm)`});

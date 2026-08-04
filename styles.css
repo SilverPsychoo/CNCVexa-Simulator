@@ -84,3 +84,32 @@ button:hover{background:#193344;border-color:#436278}button:active{transform:tra
 .diag[data-code="CHUCK"],.diag[data-code="X_NEGATIVE"],.diag[data-code="X_TRAVEL"],.diag[data-code="Z_TRAVEL"]{box-shadow:inset 0 0 0 1px rgba(255,80,96,.22)}
 .app-root.lathe-mode .alarm-banner{max-width:min(620px,calc(100% - 40px));font-weight:800}
 @media(max-width:1350px){.app-root.lathe-mode .safety-toggle{display:none!important}}
+
+/* v5.4 · visual de torno revisado */
+.lathe-tool-preview{position:relative;overflow:hidden;min-height:118px;background:linear-gradient(145deg,#0d202b,#08151d)}
+.lathe-tool-preview:after{content:"X / Z";position:absolute;right:12px;bottom:9px;color:#527080;font:700 8px "Cascadia Code",monospace;letter-spacing:.12em}
+.lathe-tool-stage{position:relative;width:178px;height:84px;flex:0 0 178px;border:1px solid #294452;border-radius:8px;background:linear-gradient(180deg,#102633,#091720);overflow:hidden;box-shadow:inset 0 0 26px rgba(0,0,0,.35)}
+.lathe-preview-centerline{position:absolute;left:10px;right:10px;top:58%;height:1px;background:repeating-linear-gradient(90deg,#4ba5c9 0 7px,transparent 7px 12px);opacity:.72}
+.lathe-tool-glyph{position:absolute;inset:0;width:auto;height:auto;transform:none!important}
+.lathe-tool-glyph:before,.lathe-tool-glyph:after{display:none!important}
+.lathe-holder-block{position:absolute;right:13px;top:13px;width:53px;height:57px;border:1px solid #17272e;border-radius:5px;background:linear-gradient(145deg,#687981,#33444c 62%,#1f2d34);box-shadow:0 7px 15px rgba(0,0,0,.34)}
+.lathe-holder-block:before,.lathe-holder-block:after{content:"";position:absolute;left:9px;right:9px;height:5px;border-radius:2px;background:#9aa8ad;box-shadow:0 18px 0 #9aa8ad}
+.lathe-holder-block:before{top:10px}.lathe-holder-block:after{top:28px}
+.lathe-holder-shank{position:absolute;right:48px;top:39px;width:105px;height:18px;border:1px solid #26373e;border-radius:4px 1px 1px 4px;background:linear-gradient(180deg,#c7d2d6,#71858e 52%,#40545c);transform:skewX(-9deg);box-shadow:0 6px 13px rgba(0,0,0,.32)}
+.lathe-holder-shank:after{content:"";position:absolute;left:9px;right:15px;top:3px;height:2px;background:rgba(255,255,255,.35)}
+.lathe-insert{position:absolute;left:14px;top:31px;width:30px;height:28px;background:#ffd21f;border:2px solid #5e4b09;clip-path:polygon(100% 50%,24% 0,0 76%,46% 100%);filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
+.lathe-tool-glyph.finish .lathe-insert{width:26px;height:25px;top:33px;clip-path:polygon(100% 50%,34% 0,0 50%,34% 100%);background:#ffe36b}
+.lathe-tool-glyph.face .lathe-insert{width:28px;height:28px;top:32px;clip-path:polygon(100% 0,100% 100%,0 78%,22% 0);background:#ffd755}
+.lathe-tool-glyph.groove .lathe-holder-shank{height:13px;top:42px}.lathe-tool-glyph.groove .lathe-insert{left:19px;top:29px;width:11px;height:33px;clip-path:none;background:#67d0df;border-color:#1f5963}
+.lathe-tool-glyph.thread .lathe-insert{left:16px;top:29px;width:28px;height:32px;clip-path:polygon(100% 50%,0 0,0 100%);background:#f1a54e;border-color:#6b3d12}
+.lathe-tool-glyph.boring .lathe-holder-shank{right:45px;top:42px;width:113px;height:11px;border-radius:8px;transform:none;background:linear-gradient(180deg,#cad5d9,#607681)}
+.lathe-tool-glyph.boring .lathe-insert{left:13px;top:34px;width:24px;height:22px;clip-path:polygon(100% 50%,15% 0,0 100%);background:#ffd759}
+.lathe-tool-glyph.drill .lathe-holder-shank{right:42px;top:39px;width:120px;height:14px;border-radius:8px;transform:none;background:repeating-linear-gradient(135deg,#d3dde0 0 8px,#637981 8px 14px)}
+.lathe-tool-glyph.drill .lathe-insert{left:6px;top:31px;width:31px;height:30px;clip-path:polygon(100% 50%,0 0,0 100%);background:#cfd9dd;border-color:#46575e}
+.lathe-tool-glyph.orientation-1,.lathe-tool-glyph.orientation-2{transform:scaleY(-1)!important}
+.lathe-tool-glyph.orientation-5,.lathe-tool-glyph.orientation-6{transform:scaleX(-1)!important}
+.lathe-tool-glyph.orientation-7,.lathe-tool-glyph.orientation-8{transform:scale(-1)!important}
+.lathe-tool-unit{color:#738c99}
+.app-root.lathe-mode .canvas-wrap{background:#08141d}
+.app-root.lathe-mode #simCanvas{filter:saturate(1.04) contrast(1.02)}
+@media(max-width:900px){.lathe-tool-stage{width:130px;flex-basis:130px}.lathe-holder-shank{width:75px}.lathe-tool-preview{align-items:flex-start}}
