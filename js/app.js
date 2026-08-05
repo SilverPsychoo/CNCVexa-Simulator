@@ -1,8 +1,8 @@
-import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=5.4.0';
-import {FanucInterpreter} from './interpreter.js?v=5.4.0';
-import {StockSimulator} from './simulator.js?v=5.4.0';
-import {LatheInterpreter} from './lathe-interpreter.js?v=5.4.0';
-import {LatheSimulator} from './lathe-simulator.js?v=5.4.0';
+import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=5.5.0';
+import {FanucInterpreter} from './interpreter.js?v=5.5.0';
+import {StockSimulator} from './simulator.js?v=5.5.0';
+import {LatheInterpreter} from './lathe-interpreter.js?v=5.5.0';
+import {LatheSimulator} from './lathe-simulator.js?v=5.5.0';
 
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];

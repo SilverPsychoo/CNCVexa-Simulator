@@ -1,4 +1,4 @@
-import {evaluateExpression,evaluateCondition} from './expression.js?v=5.4.0';
+import {evaluateExpression,evaluateCondition} from './expression.js?v=5.5.0';
 
 const stripComments=line=>line.replace(/\([^)]*\)/g,'').replace(/;.*/,'').trim().toUpperCase();
 const unitFactor=state=>state.units==='G20'?25.4:1;
@@ -82,12 +82,39 @@ export class LatheInterpreter{
     this.steps.push({kind:'toolchange',machineType:'lathe',line,source,fromTool,toTool,tool:toTool,offset,toolType:tool.type,toolName:tool.name,noseRadius:tool.noseRadius,insertWidth:tool.insertWidth,orientation:tool.orientation,state:cloneState(this.state)});
   }
   arcPoints(from,to,cw,words){
-    const unit=unitFactor(this.state),sx=from.x,sz=from.z,tx=to.x,tz=to.z;let cx,cz,r;
-    if(words.I!==undefined||words.K!==undefined){cx=sx+(words.I||0)*unit;cz=sz+(words.K||0)*unit;r=Math.hypot(sx-cx,sz-cz);}
-    else if(words.R!==undefined){r=Math.abs(words.R)*unit;const dx=tx-sx,dz=tz-sz,q=Math.hypot(dx,dz);if(q<1e-9)throw new Error('Arco completo requiere I/K');if(q>2*r+1e-6)throw new Error('Radio R demasiado pequeño');const mx=(sx+tx)/2,mz=(sz+tz)/2,h=Math.sqrt(Math.max(0,r*r-q*q/4)),sign=(cw?-1:1)*(words.R<0?-1:1);cx=mx-sign*dz/q*h;cz=mz+sign*dx/q*h;}
-    else throw new Error('Arco G18 sin I/K o R');
-    let a0=Math.atan2(sz-cz,sx-cx),a1=Math.atan2(tz-cz,tx-cx),sweep=a1-a0;if(cw&&sweep>=0)sweep-=Math.PI*2;if(!cw&&sweep<=0)sweep+=Math.PI*2;
-    const count=Math.max(8,Math.ceil(Math.abs(sweep)*r/1.5)),points=[];for(let i=1;i<=count;i++){const t=i/count,a=a0+sweep*t;points.push({x:cx+r*Math.cos(a),z:cz+r*Math.sin(a)});}return points;
+    const unit=unitFactor(this.state);
+    // En torno X se programa normalmente en diámetro, mientras I es una
+    // distancia radial. Calculamos el arco en el plano físico Z-radio y al
+    // final regresamos a coordenadas X de diámetro.
+    const su=from.z,sv=from.x/2,tu=to.z,tv=to.x/2;let cu,cv,r,sweep,a0;
+    const directedSweep=(start,end)=>{let value=end-start;if(cw){while(value>=0)value-=Math.PI*2;}else{while(value<=0)value+=Math.PI*2;}return value;};
+    if(words.I!==undefined||words.K!==undefined){
+      cv=sv+(words.I||0)*unit;cu=su+(words.K||0)*unit;r=Math.hypot(su-cu,sv-cv);
+      if(r<EPS)throw new Error('Arco G18 con radio cero');
+      const endRadius=Math.hypot(tu-cu,tv-cv),tolerance=Math.max(.02,r*.005);
+      if(Math.abs(endRadius-r)>tolerance)throw new Error(`I/K no forman un arco válido: radio inicial ${r.toFixed(3)} mm y final ${endRadius.toFixed(3)} mm`);
+      a0=Math.atan2(sv-cv,su-cu);const a1=Math.atan2(tv-cv,tu-cu);sweep=directedSweep(a0,a1);
+    }else if(words.R!==undefined){
+      r=Math.abs(words.R)*unit;const du=tu-su,dv=tv-sv,q=Math.hypot(du,dv);
+      if(q<EPS)throw new Error('Arco completo requiere I/K');
+      if(q>2*r+1e-6)throw new Error('Radio R demasiado pequeño');
+      const mu=(su+tu)/2,mv=(sv+tv)/2,h=Math.sqrt(Math.max(0,r*r-q*q/4)),pu=-dv/q,pv=du/q;
+      const candidates=[{u:mu+pu*h,v:mv+pv*h},{u:mu-pu*h,v:mv-pv*h}].map(center=>{
+        const start=Math.atan2(sv-center.v,su-center.u),end=Math.atan2(tv-center.v,tu-center.u);
+        return{...center,start,sweep:directedSweep(start,end)};
+      });
+      const wantLong=words.R<0;
+      let chosen=candidates.find(c=>wantLong?Math.abs(c.sweep)>Math.PI+1e-6:Math.abs(c.sweep)<=Math.PI+1e-6);
+      if(!chosen)chosen=wantLong?candidates.sort((a,b)=>Math.abs(b.sweep)-Math.abs(a.sweep))[0]:candidates.sort((a,b)=>Math.abs(a.sweep)-Math.abs(b.sweep))[0];
+      cu=chosen.u;cv=chosen.v;a0=chosen.start;sweep=chosen.sweep;
+    }else throw new Error('Arco G18 sin I/K o R');
+    const count=Math.max(8,Math.ceil(Math.abs(sweep)*r/.75)),points=[];
+    for(let i=1;i<=count;i++){
+      const t=i/count,a=a0+sweep*t,u=cu+r*Math.cos(a),v=cv+r*Math.sin(a);
+      points.push({x:2*v,z:u});
+    }
+    points[points.length-1]={...to};
+    return points;
   }
   setVar(line,pc){const m=line.clean.match(/^#(\d+|\[[^\]]+\])\s*=\s*(.+)$/);if(!m)return false;const id=m[1].startsWith('[')?Math.trunc(this.wordValue(m[1].slice(1,-1))):Number(m[1]),value=this.wordValue(m[2]);this.variables.set(id,value);this.trace.push(`L${line.index}: #${id} = ${value}`);pc.index++;return true;}
   executeFlow(line,pc,program){
@@ -97,14 +124,64 @@ export class LatheInterpreter{
     const wh=line.clean.match(/^WHILE\s*\[(.+)\]\s*DO(\d+)/);if(wh){if(evaluateCondition(wh[1],this.variables))pc.index++;else pc.index=(program.whilePairs.get(pc.index)??pc.index)+1;return true;}
     const end=line.clean.match(/^END(\d+)/);if(end){pc.index=program.whilePairs.get(pc.index)??pc.index+1;return true;}return false;
   }
-  profileBetween(program,p,q){const start=program.labels.get(String(Number(p))),end=program.labels.get(String(Number(q)));if(start===undefined||end===undefined||end<=start)return null;const saved=cloneState(this.state),points=[];let pos={...saved.programmed};for(let i=start;i<=end;i++){const clean=program.lines[i].clean;if(!clean)continue;let words;try{words=this.parseWords(clean);}catch{continue;}const target={...pos};const unit=unitFactor(saved),o=this.getOffset();if(words.X!==undefined)target.x=words.X*unit+o.x;if(words.Z!==undefined)target.z=words.Z*unit+o.z;if(words.U!==undefined)target.x+=words.U*unit;if(words.W!==undefined)target.z+=words.W*unit;if(target.x!==pos.x||target.z!==pos.z){points.push({from:{...pos},to:{...target},line:program.lines[i].index});pos=target;}}return points.length?points:null;}
+  profileBetween(program,p,q){
+    const start=program.labels.get(String(Number(p))),end=program.labels.get(String(Number(q)));
+    if(start===undefined||end===undefined||end<start)return null;
+    const saved=cloneState(this.state),segments=[];let pos={...saved.programmed},motion=saved.motion||'G00';
+    for(let i=start;i<=end;i++){
+      const line=program.lines[i],clean=line.clean;if(!clean)continue;
+      const motionCode=[...clean.matchAll(/G(0?0|0?1|0?2|0?3)(?!\d)/g)].map(m=>canonicalG(m[1])).at(-1);if(motionCode)motion=motionCode;
+      let words;try{words=this.parseWords(clean);}catch{continue;}
+      const target={...pos},unit=unitFactor(saved),o=this.getOffset();
+      if(words.X!==undefined)target.x=words.X*unit+o.x;if(words.Z!==undefined)target.z=words.Z*unit+o.z;
+      if(words.U!==undefined)target.x+=words.U*unit;if(words.W!==undefined)target.z+=words.W*unit;
+      if(Math.abs(target.x-pos.x)<EPS&&Math.abs(target.z-pos.z)<EPS)continue;
+      if(motion==='G02'||motion==='G03'){
+        let cursor={...pos};
+        try{for(const point of this.arcPoints(pos,target,motion==='G02',words)){segments.push({from:{...cursor},to:{...point},type:motion,line:line.index,source:line.text});cursor=point;}}
+        catch(error){this.warn('error',line.index,error.message,'ARC_PROFILE');return null;}
+      }else segments.push({from:{...pos},to:{...target},type:motion,line:line.index,source:line.text});
+      pos={...target};
+    }
+    if(!segments.length)return null;segments.startIndex=start;segments.endIndex=end;return segments;
+  }
   executeG71(words,line,program){
     if(words.P===undefined||words.Q===undefined){this.state.g71={depth:this.cycleIncrement(words.U??words.D,2),retract:this.cycleIncrement(words.R,1)};return;}
     const profile=this.profileBetween(program,words.P,words.Q);if(!profile){this.warn('error',line.index,'G71 no encontró el perfil P/Q');return;}
-    const depth=this.state.g71?.depth||this.cycleIncrement(words.D,2),finishX=this.cycleIncrement(words.U,0),finishZ=this.cycleIncrement(words.W,0),stockDia=this.config.stock?.diameter||Math.max(...profile.map(s=>s.from.x),this.state.programmed.x);
-    const minDia=Math.max(0,Math.min(...profile.map(s=>Math.min(s.from.x,s.to.x)))+finishX);let passDia=stockDia-depth;
-    while(passDia>minDia+1e-6){let cursor={...this.state.programmed,x:passDia};this.addMove(this.state.programmed,cursor,'G00',line.index,line.text,{cycle:'G71'});for(const seg of profile){const target={x:Math.max(passDia,Math.min(stockDia,seg.to.x+finishX)),z:seg.to.z+(seg.to.z<0?finishZ:-finishZ)};this.addMove(cursor,target,'G01',line.index,line.text,{cycle:'G71'});cursor=target;}passDia-=depth;}
-    this.trace.push(`L${line.index}: G71 desbaste ${profile.length} segmentos`);
+    const cycleStart={...this.state.programmed},depthRadial=Math.max(.001,this.state.g71?.depth||this.cycleIncrement(words.D,2)),diameterStep=depthRadial*2,retractRadial=Math.max(0,this.state.g71?.retract||1),finishX=this.cycleIncrement(words.U,0),finishZ=this.cycleIncrement(words.W,0),stockDia=this.config.stock?.diameter||Math.max(cycleStart.x,...profile.map(s=>Math.max(s.from.x,s.to.x)));
+    // El primer bloque P de un G71 Tipo I suele ser el movimiento radial de
+    // aproximación. Define el modo de llegada, pero no es parte del contorno.
+    let contour=profile.length>1?profile.slice(1):profile;
+    if(!contour.length){this.warn('error',line.index,'G71 no encontró un contorno después del bloque P','G71_PROFILE');return;}
+    const rawPoints=[{...contour[0].from},...contour.map(seg=>({...seg.to}))];
+    const points=rawPoints.map(p=>({x:p.x+finishX,z:Math.min(cycleStart.z,p.z+finishZ)}));
+    for(let i=1;i<points.length;i++)if(points[i].z>points[i-1].z+1e-5){this.warn('warning',line.index,'G71 Tipo I requiere que Z no cambie de dirección','G71_NON_MONOTONIC');break;}
+    const minDia=Math.max(0,Math.min(...points.map(p=>p.x))),passDiameters=[];
+    for(let dia=stockDia-diameterStep;dia>minDia+EPS;dia-=diameterStep)passDiameters.push(dia);
+    if(stockDia>minDia+EPS&&(passDiameters.length===0||Math.abs(passDiameters.at(-1)-minDia)>EPS))passDiameters.push(minDia);
+    const endForDiameter=dia=>{
+      let endZ=cycleStart.z,found=false;
+      for(let i=1;i<points.length;i++){
+        const a=points[i-1],b=points[i];
+        if(a.x<=dia+EPS){
+          found=true;
+          if(b.x<=dia+EPS){endZ=b.z;continue;}
+          const den=b.x-a.x,t=Math.abs(den)<EPS?0:Math.max(0,Math.min(1,(dia-a.x)/den));endZ=a.z+(b.z-a.z)*t;break;
+        }
+        break;
+      }
+      return found?endZ:null;
+    };
+    for(const passDia of passDiameters){
+      const endZ=endForDiameter(passDia);if(endZ===null||endZ>=cycleStart.z-EPS)continue;
+      this.addMove(this.state.programmed,{x:passDia,z:cycleStart.z},'G00',line.index,line.text,{cycle:'G71',roughPass:true});
+      this.addMove(this.state.programmed,{x:passDia,z:endZ},'G01',line.index,line.text,{cycle:'G71',roughPass:true});
+      const retractX=Math.min(stockDia+diameterStep,passDia+2*retractRadial),retractZ=Math.min(cycleStart.z,endZ+retractRadial);
+      this.addMove(this.state.programmed,{x:retractX,z:retractZ},'G00',line.index,line.text,{cycle:'G71',retract:true});
+      this.addMove(this.state.programmed,{x:retractX,z:cycleStart.z},'G00',line.index,line.text,{cycle:'G71',return:true});
+      this.addMove(this.state.programmed,cycleStart,'G00',line.index,line.text,{cycle:'G71',return:true});
+    }
+    this.trace.push(`L${line.index}: G71 Tipo I · ${passDiameters.length} pasadas · profundidad radial ${depthRadial}`);
   }
   executeG72(words,line,program){
     if(words.P===undefined||words.Q===undefined){this.state.g72={depth:this.cycleIncrement(words.W??words.D,2),retract:this.cycleIncrement(words.R,1)};return;}
@@ -121,7 +198,13 @@ export class LatheInterpreter{
     for(let pass=base.repeats;pass>=1;pass--){const ratio=pass/base.repeats,ox=base.shiftX*ratio+finishX,oz=base.shiftZ*ratio+finishZ;let cursor={...this.state.programmed};for(const seg of profile){const target={x:Math.max(0,seg.to.x+ox),z:seg.to.z+(seg.to.z<0?oz:-oz)};this.addMove(cursor,target,'G01',line.index,line.text,{cycle:'G73',patternPass:base.repeats-pass+1,patternPasses:base.repeats});cursor=target;}}
     this.trace.push(`L${line.index}: G73 patrón irregular ${base.repeats} repeticiones`);
   }
-  executeG70(words,line,program){const profile=this.profileBetween(program,words.P,words.Q);if(!profile){this.warn('error',line.index,'G70 no encontró el perfil P/Q');return;}let cursor={...this.state.programmed};for(const seg of profile){const target={...seg.to};this.addMove(cursor,target,'G01',line.index,line.text,{cycle:'G70'});cursor=target;}this.trace.push(`L${line.index}: G70 acabado ${profile.length} segmentos`);}
+  executeG70(words,line,program){
+    const profile=this.profileBetween(program,words.P,words.Q);if(!profile){this.warn('error',line.index,'G70 no encontró el perfil P/Q');return;}
+    const returnPoint={...this.state.programmed};let cursor={...this.state.programmed};
+    for(const seg of profile){const target={...seg.to},type=seg.type==='G00'?'G00':seg.type;this.addMove(cursor,target,type,line.index,line.text,{cycle:'G70',profileLine:seg.line});cursor=target;}
+    this.addMove(this.state.programmed,returnPoint,'G00',line.index,line.text,{cycle:'G70',return:true});
+    this.trace.push(`L${line.index}: G70 acabado ${profile.length} segmentos`);
+  }
   cycleIncrement(value,fallback=1){if(value===undefined)return fallback;const unit=unitFactor(this.state),raw=Math.abs(value);return raw>50?raw/1000*unit:raw*unit;}
   executeG74(words,line){
     if(words.X===undefined&&words.Z===undefined){this.state.g74={retract:Math.abs(words.R||1)*unitFactor(this.state)};return;}
@@ -176,6 +259,11 @@ export class LatheInterpreter{
     }
     this.trace.push(`L${line.index}: G83 barrenado axial · Z${target.z} · Q${peck} · P${dwell} ms`);
   }
+  profileIsInline(program,currentIndex,p){
+    const target=program.labels.get(String(Number(p)));if(target===undefined)return false;
+    let next=currentIndex+1;while(next<program.lines.length&&!program.lines[next].clean)next++;
+    return next===target;
+  }
   executeBlock(line,pc,program){
     if(!line.clean||/^O\d+/.test(line.clean)){pc.index++;return;}
     if(this.setVar(line,pc)||this.executeFlow(line,pc,program))return;
@@ -192,7 +280,10 @@ export class LatheInterpreter{
     if(words.F!==undefined)this.state.feed=words.F*unitFactor(this.state);
     if(words.S!==undefined){if(gCodes.includes('G50'))this.state.spindleLimit=words.S;else this.state.commandedSpeed=words.S;}
     for(const m of mCodes){if(m==='M03')this.state.spindle='CW';else if(m==='M04')this.state.spindle='CCW';else if(m==='M05')this.state.spindle='OFF';else if(m==='M08')this.state.coolant='ON';else if(m==='M09')this.state.coolant='OFF';else if(m==='M30'||m==='M02')this.ended=true;}
-    if(gCodes.includes('G71')){this.executeG71(words,line,program);pc.index++;return;}if(gCodes.includes('G72')){this.executeG72(words,line,program);pc.index++;return;}if(gCodes.includes('G73')){this.executeG73(words,line,program);pc.index++;return;}if(gCodes.includes('G70')){this.executeG70(words,line,program);pc.index++;return;}if(gCodes.includes('G74')){this.executeG74(words,line);pc.index++;return;}if(gCodes.includes('G75')){this.executeG75(words,line);pc.index++;return;}if(gCodes.includes('G76')){this.executeG76(words,line,line.clean);pc.index++;return;}if(gCodes.includes('G83')){this.executeG83(words,line);pc.index++;return;}
+    if(gCodes.includes('G71')){const inline=words.P!==undefined&&words.Q!==undefined&&this.profileIsInline(program,pc.index,words.P);this.executeG71(words,line,program);pc.index=inline&&program.labels.has(String(Number(words.Q)))?program.labels.get(String(Number(words.Q)))+1:pc.index+1;return;}
+    if(gCodes.includes('G72')){const inline=words.P!==undefined&&words.Q!==undefined&&this.profileIsInline(program,pc.index,words.P);this.executeG72(words,line,program);pc.index=inline&&program.labels.has(String(Number(words.Q)))?program.labels.get(String(Number(words.Q)))+1:pc.index+1;return;}
+    if(gCodes.includes('G73')){const inline=words.P!==undefined&&words.Q!==undefined&&this.profileIsInline(program,pc.index,words.P);this.executeG73(words,line,program);pc.index=inline&&program.labels.has(String(Number(words.Q)))?program.labels.get(String(Number(words.Q)))+1:pc.index+1;return;}
+    if(gCodes.includes('G70')){this.executeG70(words,line,program);pc.index++;return;}if(gCodes.includes('G74')){this.executeG74(words,line);pc.index++;return;}if(gCodes.includes('G75')){this.executeG75(words,line);pc.index++;return;}if(gCodes.includes('G76')){this.executeG76(words,line,line.clean);pc.index++;return;}if(gCodes.includes('G83')){this.executeG83(words,line);pc.index++;return;}
     const m98=mCodes.includes('M98'),m99=mCodes.includes('M99');if(m98&&words.P!==undefined){const id=String(Math.trunc(words.P));if(!this.programs.has(id))this.warn('error',line.index,`Subprograma O${id} no existe`);else{this.callStack.push({program:pc.program,index:pc.index+1,remaining:Math.max(1,Math.trunc(words.L||1)),target:id});pc.program=id;pc.index=0;return;}}
     if(m99){const call=this.callStack.at(-1);if(call){if(call.remaining>1){call.remaining--;pc.program=call.target;pc.index=0;}else{this.callStack.pop();pc.program=call.program;pc.index=call.index;}}else this.ended=true;return;}
     const hasMotion=['X','Z','U','W'].some(k=>words[k]!==undefined);if(hasMotion){const from={...this.state.programmed},to=this.resolveTarget(words,gCodes.includes('G53'));if(this.state.motion==='G02'||this.state.motion==='G03'){try{let cursor=from;for(const point of this.arcPoints(from,to,this.state.motion==='G02',words)){this.addMove(cursor,point,this.state.motion,line.index,line.text,{plane:'G18'});cursor=point;}}catch(error){this.warn('error',line.index,error.message);}}else this.addMove(from,to,this.state.motion,line.index,line.text,{plane:'G18'});}
