@@ -1,4 +1,4 @@
-import {evaluateExpression,evaluateCondition} from './expression.js?v=5.5.0';
+import {evaluateExpression,evaluateCondition} from './expression.js?v=5.6.0';
 
 const stripComments=line=>line.replace(/\([^)]*\)/g,'').replace(/;.*/,'').trim().toUpperCase();
 const unitFactor=state=>state.units==='G20'?25.4:1;
@@ -184,11 +184,92 @@ export class LatheInterpreter{
     this.trace.push(`L${line.index}: G71 Tipo I · ${passDiameters.length} pasadas · profundidad radial ${depthRadial}`);
   }
   executeG72(words,line,program){
-    if(words.P===undefined||words.Q===undefined){this.state.g72={depth:this.cycleIncrement(words.W??words.D,2),retract:this.cycleIncrement(words.R,1)};return;}
-    const profile=this.profileBetween(program,words.P,words.Q);if(!profile){this.warn('error',line.index,'G72 no encontró el perfil P/Q');return;}
-    const depth=this.state.g72?.depth||this.cycleIncrement(words.D,2),finishX=this.cycleIncrement(words.U,0),finishZ=this.cycleIncrement(words.W,0),front=Math.max(0,this.state.programmed.z),minZ=Math.min(...profile.map(s=>Math.min(s.from.z,s.to.z)))+finishZ;let passZ=front-depth;
-    while(passZ>minZ+EPS){let cursor={...this.state.programmed,z:passZ};this.addMove(this.state.programmed,cursor,'G00',line.index,line.text,{cycle:'G72'});for(const seg of profile){const target={x:Math.max(0,seg.to.x+finishX),z:Math.max(passZ,seg.to.z+finishZ)};this.addMove(cursor,target,'G01',line.index,line.text,{cycle:'G72'});cursor=target;}passZ-=depth;}
-    this.trace.push(`L${line.index}: G72 desbaste frontal ${profile.length} segmentos`);
+    if(words.P===undefined||words.Q===undefined){
+      this.state.g72={depth:this.cycleIncrement(words.W??words.D,2),retract:this.cycleIncrement(words.R,1)};
+      return;
+    }
+    const profile=this.profileBetween(program,words.P,words.Q);
+    if(!profile){this.warn('error',line.index,'G72 no encontró el perfil P/Q');return;}
+
+    const cycleStart={...this.state.programmed};
+    const depthAxial=Math.max(.001,this.state.g72?.depth||this.cycleIncrement(words.D,2));
+    const retract=Math.max(0,this.state.g72?.retract||1);
+    const finishX=this.cycleIncrement(words.U,0);
+    const finishZ=this.cycleIncrement(words.W,0);
+    const stockDia=Math.max(0,this.config.stock?.diameter||cycleStart.x);
+
+    // En G72 Tipo I, el primer bloque P define el desplazamiento axial A→A'.
+    // Ese bloque establece el sentido del ciclo, pero no forma parte del
+    // contorno terminado. Las pasadas de desbaste son paralelas al eje X.
+    const approach=profile[0];
+    const typeI=Math.abs(approach.to.x-approach.from.x)<1e-5&&Math.abs(approach.to.z-approach.from.z)>EPS;
+    if(!typeI){
+      this.warn('warning',line.index,'G72 Tipo II todavía se aproxima mediante el perfil discretizado; para Tipo I el bloque P debe contener solamente Z','G72_TYPE_II');
+    }
+    const contour=typeI&&profile.length>1?profile.slice(1):profile;
+    if(!contour.length){this.warn('error',line.index,'G72 no encontró un contorno después del bloque P','G72_PROFILE');return;}
+
+    const points=[{...contour[0].from},...contour.map(seg=>({...seg.to}))];
+    const profileStartZ=points[0].z;
+    const profileEndZ=points.at(-1).z;
+    const zDirection=Math.sign(profileEndZ-profileStartZ)||Math.sign(cycleStart.z-profileStartZ)||1;
+
+    // G72 Tipo I requiere que X no cambie de dirección a lo largo del perfil.
+    let xDirection=0;
+    for(let i=1;i<points.length;i++){
+      const dx=points[i].x-points[i-1].x;
+      if(Math.abs(dx)<1e-5)continue;
+      const sign=Math.sign(dx);
+      if(!xDirection)xDirection=sign;
+      else if(sign!==xDirection){this.warn('warning',line.index,'G72 Tipo I requiere que X no cambie de dirección','G72_NON_MONOTONIC');break;}
+    }
+
+    const contourXAtZ=queryZ=>{
+      const hits=[];
+      for(const seg of contour){
+        const a=seg.from,b=seg.to,minZ=Math.min(a.z,b.z)-1e-5,maxZ=Math.max(a.z,b.z)+1e-5;
+        if(queryZ<minZ||queryZ>maxZ)continue;
+        const dz=b.z-a.z;
+        if(Math.abs(dz)<1e-7){
+          if(Math.abs(queryZ-a.z)<1e-4){hits.push(a.x,b.x);}
+          continue;
+        }
+        const t=Math.max(0,Math.min(1,(queryZ-a.z)/dz));
+        hits.push(a.x+(b.x-a.x)*t);
+      }
+      if(!hits.length){
+        const nearest=points.reduce((best,p)=>Math.abs(p.z-queryZ)<Math.abs(best.z-queryZ)?p:best,points[0]);
+        return nearest.x;
+      }
+      // Para torneado exterior el corte va desde el diámetro de seguridad hacia
+      // el perfil, por lo que interesa la intersección más cercana al eje.
+      return cycleStart.x>=Math.max(...hits)-EPS?Math.min(...hits):Math.max(...hits);
+    };
+
+    const roughStartZ=profileStartZ+zDirection*finishZ;
+    const roughEndZ=profileEndZ+zDirection*finishZ;
+    const passPositions=[];
+    let passZ=roughStartZ+zDirection*depthAxial;
+    const beforeEnd=zDirection>0?(z=>z<roughEndZ-EPS):(z=>z>roughEndZ+EPS);
+    while(beforeEnd(passZ)){passPositions.push(passZ);passZ+=zDirection*depthAxial;}
+    if(!passPositions.length||Math.abs(passPositions.at(-1)-roughEndZ)>1e-5)passPositions.push(roughEndZ);
+
+    const clearanceX=Math.max(cycleStart.x,stockDia+Math.max(0,finishX));
+    for(const z of passPositions){
+      const finalProfileZ=z-zDirection*finishZ;
+      const contourX=contourXAtZ(finalProfileZ);
+      const targetX=Math.max(0,Math.min(stockDia||clearanceX,contourX+finishX));
+      const approachPoint={x:clearanceX,z};
+      this.addMove(this.state.programmed,approachPoint,'G00',line.index,line.text,{cycle:'G72',approach:true});
+      this.addMove(this.state.programmed,{x:targetX,z},'G01',line.index,line.text,{cycle:'G72',roughPass:true,passZ:z});
+
+      // Retirada aproximada a 45° en sentido contrario al avance axial.
+      const retractPoint={x:Math.min(clearanceX,targetX+2*retract),z:z-zDirection*retract};
+      this.addMove(this.state.programmed,retractPoint,'G00',line.index,line.text,{cycle:'G72',retract:true});
+      this.addMove(this.state.programmed,{x:clearanceX,z:retractPoint.z},'G00',line.index,line.text,{cycle:'G72',return:true});
+    }
+    this.addMove(this.state.programmed,cycleStart,'G00',line.index,line.text,{cycle:'G72',return:true});
+    this.trace.push(`L${line.index}: G72 Tipo I · ${passPositions.length} pasadas en X · Z ${roughStartZ.toFixed(3)} → ${roughEndZ.toFixed(3)}`);
   }
 
   executeG73(words,line,program){
