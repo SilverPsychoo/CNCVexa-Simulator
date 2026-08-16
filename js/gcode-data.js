@@ -184,6 +184,7 @@ export const LATHE_CODES=[
   E('G75','Ranurado por pecks','Ranurado exterior/interior: X es el diámetro final, Z la posición final, P el peck en X y Q el paso lateral en Z.','G00 X30 Z-6\nG75 X20 Z-10 P0.1 Q0.15 F0.02','Ciclos torno','full'),
   E('G76','Roscado múltiple','Acepta el formato de un bloque X Z I K D A F y el formato FANUC de dos bloques P/Q/R. K/P definen profundidad, D/Q la primera pasada y F el paso.','G76 X18.2 Z-18 I-0.01 K900 D100 A60 F1.5\n\nG76 P040060 Q100 R0.02\nG76 X18.2 Z-18 P900 Q160 F1.5','Ciclos torno','full'),
   E('G83','Barrenado axial profundo','Ciclo de pecks sobre el eje Z. Z es la profundidad, Q el peck, R la retracción y P la permanencia en milisegundos.','G00 X0 Z1\nG83 Z-50 Q2000 R1 P1000 F0.08\nG80','Ciclos torno','full'),
+  E('G84','Roscado axial con machuelo','Ciclo de roscado axial. Entra con avance sincronizado hasta Z y regresa al plano R.','G00 X0 Z2\nG84 Z-12 R1 F1.5\nG80','Ciclos torno','full'),
   E('G90','Absoluto / ciclo de torneado','En este simulador selecciona coordenadas absolutas; algunos controles de torno usan G90 como ciclo simple.','G90','Coordenadas torno','partial'),
   E('G91','Incremental','Selecciona coordenadas incrementales; U/W también permiten incrementos por eje.','G91','Coordenadas torno','full'),
   E('G94','Avance por minuto','Selecciona avance por minuto en esta versión.','G94','Avance torno','full'),
