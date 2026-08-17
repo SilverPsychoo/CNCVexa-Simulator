@@ -26,6 +26,7 @@ export class LatheSimulator{
     this.turretAnimation=null;
     this.collisionMarkers=[];
     this.threadSegments=[];
+    this.threadRegions=[];
     this.camera={yaw:-35*Math.PI/180,pitch:22*Math.PI/180,zoom:1,panX:0,panY:0};
     this.drag=null;
     this.resizeObserver=new ResizeObserver(()=>this.resize());
@@ -98,6 +99,7 @@ export class LatheSimulator{
     this.toolPos={x:this.cfg.diameter+20,z:5};
     this.collisionMarkers=[];
     this.threadSegments=[];
+    this.threadRegions=[];
     this.fitView(false);
     this.draw();
   }
@@ -109,6 +111,7 @@ export class LatheSimulator{
     this.toolPos={x:this.cfg.diameter+20,z:5};
     this.collisionMarkers=[];
     this.threadSegments=[];
+    this.threadRegions=[];
     this.draw();
   }
 
@@ -131,8 +134,11 @@ export class LatheSimulator{
     this.activeToolNumber=step.tool||this.activeToolNumber;
     this.activeOffset=step.offset||this.activeOffset;
     this.currentTool={...this.currentTool,type:step.toolType||this.currentTool.type,name:step.toolName||this.currentTool.name,noseRadius:step.noseRadius??this.currentTool.noseRadius,insertWidth:step.insertWidth||this.currentTool.insertWidth,orientation:step.orientation||this.currentTool.orientation};
-    if(step.cut)this.cutSegment(step.from,step.to,this.currentTool);
-    if(step.cycle==='G76'&&step.thread)this.threadSegments.push({...step});
+    if(step.cut&&!(step.cycle==='G76'&&step.thread))this.cutSegment(step.from,step.to,this.currentTool);
+    if(step.cycle==='G76'&&step.thread&&step.threadPass===step.threadPasses){
+      this.threadSegments.push({...step});
+      this.registerThreadRegion(step);
+    }
     if(step.collisions?.length)this.collisionMarkers.push({point:{...step.to},line:step.line,issues:step.collisions});
     this.draw();
   }
@@ -162,6 +168,20 @@ export class LatheSimulator{
     const len=Math.hypot(b.x-a.x,b.z-a.z),samples=Math.max(1,Math.ceil(len/Math.max(.25,this.cfg.resolution*.45))),nose=Math.max(.1,tool.noseRadius||.8);
     for(let s=0;s<=samples;s++){
       const t=s/samples,x=lerp(a.x,b.x,t),z=lerp(a.z,b.z,t),r=Math.abs(x)/2;
+
+      // Un ranurador corta con todo el ancho del inserto. Antes se usaba
+      // solamente el radio de punta como si fuera un buril redondo. En Ultra
+      // eso dejaba crestas entre los pecks de G75 y producía los "picos".
+      // La geometría física es independiente de la calidad de render.
+      if(tool.type==='groove'){
+        const halfWidth=Math.max(this.cfg.resolution*.5,(tool.insertWidth||1)/2);
+        if(z>halfWidth||z<-this.cfg.length-halfWidth)continue;
+        const i0=Math.max(0,Math.ceil((-z-halfWidth)/this.cfg.resolution));
+        const i1=Math.min(this.count-1,Math.floor((-z+halfWidth)/this.cfg.resolution));
+        for(let i=i0;i<=i1;i++)this.profile[i]=Math.max(this.innerProfile[i]+.05,Math.min(this.profile[i],r));
+        continue;
+      }
+
       if(z>nose||z<-this.cfg.length-nose)continue;
       const i0=Math.max(0,Math.floor((-z-nose)/this.cfg.resolution)),i1=Math.min(this.count-1,Math.ceil((-z+nose)/this.cfg.resolution));
       for(let i=i0;i<=i1;i++){
@@ -172,6 +192,22 @@ export class LatheSimulator{
         else this.profile[i]=Math.max(this.innerProfile[i]+.05,Math.min(this.profile[i],effective));
       }
     }
+  }
+
+  registerThreadRegion(step){
+    const pitch=Math.max(.2,Number(step.threadPitch)||1);
+    const zStart=Number(step.threadStartZ??step.from.z),zEnd=Number(step.threadTargetZ??step.to.z);
+    const startX=Math.abs(Number(step.threadStartX??step.from.x)),targetX=Math.abs(Number(step.threadTargetX??step.to.x));
+    const majorR=Math.max(startX,targetX)/2,minorR=Math.min(startX,targetX)/2;
+    const stockMin=-this.cfg.length,rawMin=Math.min(zStart,zEnd),rawMax=Math.max(zStart,zEnd),zMin=Math.max(stockMin,rawMin),zMax=Math.min(0,rawMax);
+    const visualStart=zEnd<zStart?zMax:zMin,visualEnd=zEnd<zStart?zMin:zMax,i0=Math.max(0,Math.ceil((-zMax)/this.cfg.resolution)),i1=Math.min(this.count-1,Math.floor((-zMin)/this.cfg.resolution));
+    // G76 ya no se modela con el radio de punta del buril. El cuerpo se
+    // conserva en el diámetro mayor y el filete se dibuja como una hélice
+    // dedicada. Así desaparece el efecto de "serrucho" por cada pasada.
+    for(let i=i0;i<=i1;i++)this.profile[i]=Math.min(this.profile[i],majorR);
+    const region={zStart:visualStart,zEnd:visualEnd,zMin,zMax,pitch,majorR,minorR,depth:Math.max(.05,majorR-minorR),angle:Number(step.threadAngle)||60,taper:Number(step.threadTaper)||0};
+    const same=this.threadRegions.findIndex(r=>Math.abs(r.zStart-visualStart)<1e-6&&Math.abs(r.zEnd-visualEnd)<1e-6&&Math.abs(r.pitch-pitch)<1e-6);
+    if(same>=0)this.threadRegions[same]=region;else this.threadRegions.push(region);
   }
 
   resize(){
@@ -215,6 +251,7 @@ export class LatheSimulator{
     c.strokeStyle='#7ca7bb';c.lineWidth=1.4;c.setLineDash([8,5]);c.beginPath();c.moveTo(this.project2D(b.minZ,0).x,zero.y);c.lineTo(this.project2D(b.maxZ,0).x,zero.y);c.stroke();c.setLineDash([]);
     this.drawLatheBed2D();
     this.drawWorkpiece2D();
+    this.drawThread2D();
     if(this.showTable)this.drawChuck2D();
     this.drawPath2D();
     if(this.showTurret)this.drawTurret2D();
@@ -238,6 +275,29 @@ export class LatheSimulator{
     const outer=this.profile[0],inner=this.innerProfile[0],front=this.project2D(0,0),scale=front.scale;
     c.fillStyle='#e6b744';c.beginPath();c.ellipse(front.x,front.y,Math.max(2,outer*scale*.12),outer*scale,0,0,TAU);c.fill();c.strokeStyle='#815d18';c.stroke();
     if(inner>.05){c.fillStyle='#f8f8f8';c.beginPath();c.ellipse(front.x,front.y,Math.max(1,inner*scale*.12),inner*scale,0,0,TAU);c.fill();c.stroke();}
+  }
+
+  drawThread2D(){
+    if(!this.threadRegions.length)return;
+    const c=this.ctx;c.save();c.lineCap='round';c.lineJoin='round';
+    for(const r of this.threadRegions){
+      const depth=Math.min(r.depth,Math.max(.25,r.pitch*.62));
+      const dir=r.zEnd>=r.zStart?1:-1,span=Math.abs(r.zEnd-r.zStart),turns=Math.max(1,Math.floor(span/r.pitch));
+      c.strokeStyle='rgba(92,55,9,.72)';c.lineWidth=1.05;
+      for(const sign of [-1,1]){
+        c.beginPath();let first=true;
+        for(let n=0;n<=turns;n++){
+          const center=r.zStart+dir*Math.min(span,n*r.pitch),surface=sign*r.majorR,valley=sign*(r.majorR-depth);
+          const zA=center-dir*r.pitch*.42,zB=center,zC=center+dir*r.pitch*.42;
+          for(const [z,x] of [[zA,surface],[zB,valley],[zC,surface]]){
+            if(z<r.zMin-.001||z>r.zMax+.001)continue;
+            const p=this.project2D(z,x);if(first){c.moveTo(p.x,p.y);first=false;}else c.lineTo(p.x,p.y);
+          }
+        }
+        c.stroke();
+      }
+    }
+    c.restore();
   }
 
   drawChuck2D(){
@@ -423,8 +483,30 @@ export class LatheSimulator{
   }
 
   drawThread3D(){
-    if(!this.threadSegments.length)return;
-    const c=this.ctx;for(const s of this.threadSegments){const pitch=Math.max(.2,s.threadPitch||1),turns=Math.max(1,Math.abs(s.to.z-s.from.z)/pitch),samples=Math.ceil(turns*24),radius=Math.abs(s.to.x)/2+.12;c.strokeStyle='rgba(255,211,105,.78)';c.lineWidth=1;c.beginPath();for(let i=0;i<=samples;i++){const t=i/samples,z=lerp(s.from.z,s.to.z,t),a=t*turns*TAU,p=this.project3D({x:z,y:radius*Math.cos(a),z:radius*Math.sin(a)});i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y);}c.stroke();}
+    if(!this.threadRegions.length)return;
+    const c=this.ctx,b=this.basis();c.save();c.lineCap='round';c.lineJoin='round';
+    const drawHelix=(region,zShift,radius,color,width)=>{
+      const turns=Math.max(1,Math.abs(region.zEnd-region.zStart)/region.pitch),samples=Math.max(40,Math.ceil(turns*(this.renderQuality==='ultra'?34:24)));
+      c.strokeStyle=color;c.lineWidth=width;c.beginPath();let pen=false;
+      for(let i=0;i<=samples;i++){
+        const t=i/samples,z0=lerp(region.zStart,region.zEnd,t),z=z0+zShift;
+        if(z<region.zMin||z>region.zMax){pen=false;continue;}
+        const a=t*turns*TAU,ny=Math.cos(a),nz=Math.sin(a),front=ny*b.depth.y+nz*b.depth.z>.03;
+        if(!front){pen=false;continue;}
+        const p=this.project3D({x:z,y:radius*ny,z:radius*nz});
+        if(!pen){c.moveTo(p.x,p.y);pen=true;}else c.lineTo(p.x,p.y);
+      }
+      c.stroke();
+    };
+    for(const r of this.threadRegions){
+      // Tres líneas muy próximas representan las dos caras y el fondo del
+      // filete. Solo se pinta la mitad visible de la hélice para evitar que
+      // la rosca trasera se vea atravesando el sólido.
+      drawHelix(r,0,r.majorR+.035,'rgba(91,54,8,.78)',1.35);
+      drawHelix(r,r.pitch*.16,r.majorR+.055,'rgba(255,232,157,.55)',.72);
+      drawHelix(r,-r.pitch*.16,r.majorR+.045,'rgba(129,82,12,.38)',.85);
+    }
+    c.restore();
   }
 
   turretWorldLayout(){

@@ -1,8 +1,8 @@
-import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=5.7.0';
-import {FanucInterpreter} from './interpreter.js?v=5.7.0';
-import {StockSimulator} from './simulator.js?v=5.7.0';
-import {LatheInterpreter} from './lathe-interpreter.js?v=5.7.0';
-import {LatheSimulator} from './lathe-simulator.js?v=5.7.0';
+import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=5.11.0';
+import {FanucInterpreter} from './interpreter.js?v=5.11.0';
+import {StockSimulator} from './simulator.js?v=5.11.0';
+import {LatheInterpreter} from './lathe-interpreter.js?v=5.11.0';
+import {LatheSimulator} from './lathe-simulator.js?v=5.11.0';
 
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
@@ -139,8 +139,11 @@ const normalizeWorkspace=raw=>{
       topZ:Number.isFinite(Number(table.topZ))?Number(table.topZ):-z,slotDirection:table.slotDirection==='y'?'y':'x'}};
 };
 const lengthInUnit=(mm,unit)=>Number((Number(mm)/(UNIT_SCALE[unit]||1)).toFixed(unit==='in'?5:3));
+const lengthInputValue=(mm,unit)=>Number((Number(mm)/(UNIT_SCALE[unit]||1)).toFixed(unit==='in'?4:3));
 const lengthToMm=(value,unit)=>Number(value)*(UNIT_SCALE[unit]||1);
 const unitLabel=unit=>unit==='in'?'in':'mm';
+const stateDisplayUnit=state=>state?.units==='G20'?'in':'mm';
+const displayLength=(mm,state)=>lengthInUnit(mm,stateDisplayUnit(state));
 let stockDisplayUnit='mm',toolDisplayUnit='mm';
 function pieceOrigin(s=config.workspace){return{x:s.position.x,y:s.position.y,z:s.table.topZ+s.z};}
 function pieceBounds(s=config.workspace){const o=pieceOrigin(s);return s.zeroMode==='center'?{minX:o.x-s.x/2,maxX:o.x+s.x/2,minY:o.y-s.y/2,maxY:o.y+s.y/2,minZ:s.table.topZ,maxZ:o.z}:{minX:o.x,maxX:o.x+s.x,minY:o.y,maxY:o.y+s.y,minZ:s.table.topZ,maxZ:o.z};}
@@ -186,10 +189,13 @@ function compileProgram({silent=false}={}){
   return errors===0;
 }
 function updateHud(state,step=null){
-  const p=step?.to||state.machine||{x:0,y:0,z:0};
-  $('#hudX').textContent=Number(p.x||0).toFixed(3);$('#hudY').textContent=machineType==='lathe'?'—':Number(p.y||0).toFixed(3);$('#hudZ').textContent=Number(p.z||0).toFixed(3);
-  $('#hudWcs').textContent=state.wcs||'G54';$('#hudPlane').textContent=machineType==='lathe'?'G18':(step?.plane||state.plane||'G17');$('#hudMode').textContent=state.distance||'G90';$('#hudUnits').textContent=state.units==='G20'?'in':'mm';
-  $('#stateBlock').textContent=step?.line||state.line||'—';$('#stateMotion').textContent=step?.type||state.motion||'G00';$('#stateFeed').textContent=Number(step?.feed??state.feed??0).toFixed(machineType==='lathe'?3:1);
+  const p=step?.to||state.machine||{x:0,y:0,z:0},u=stateDisplayUnit(state),digits=u==='in'?4:3;
+  $('#hudX').textContent=Number(lengthInUnit(p.x||0,u)).toFixed(digits);
+  $('#hudY').textContent=machineType==='lathe'?'—':Number(lengthInUnit(p.y||0,u)).toFixed(digits);
+  $('#hudZ').textContent=Number(lengthInUnit(p.z||0,u)).toFixed(digits);
+  $('#hudWcs').textContent=state.wcs||'G54';$('#hudPlane').textContent=machineType==='lathe'?'G18':(step?.plane||state.plane||'G17');$('#hudMode').textContent=state.distance||'G90';$('#hudUnits').textContent=u;
+  const rawFeed=Number(step?.feed??state.feed??0),displayFeed=lengthInUnit(rawFeed,u);
+  $('#stateBlock').textContent=step?.line||state.line||'—';$('#stateMotion').textContent=step?.type||state.motion||'G00';$('#stateFeed').textContent=Number(displayFeed).toFixed(machineType==='lathe'?(u==='in'?4:3):(u==='in'?3:1));
   $('#stateSpindle').textContent=step?.state?.spindle||state.spindle||'OFF';$('#stateRpm').textContent=Math.round(step?.rpm??state.rpm??0);$('#stateCoolant').textContent=step?.state?.coolant||state.coolant||'OFF';
   const tn=step?.tool??state.tool??0,to=step?.offset??state.offset??tn;$('#stateTool').textContent=machineType==='lathe'?`T${String(tn).padStart(2,'0')}${String(to).padStart(2,'0')}`:`T${tn}`;
 }
@@ -304,14 +310,31 @@ function switchMachine(next,{saveCurrent=true,restoreSession=true,compile=true}=
   setDisplayMode('3d');updateSummaries();if(compile)compileProgram({silent:true});setDirty(false);setStatus(next==='lathe'?'Modo torno preparado':'Modo fresadora preparado');
 }
 let latheDisplayUnit='mm',selectedLatheTool=1;
+function latheProgramReach(){
+  let minZ=0;
+  for(const step of compiledSteps||[]){
+    for(const p of [step?.from,step?.to])if(Number.isFinite(Number(p?.z)))minZ=Math.min(minZ,Number(p.z));
+  }
+  return Math.max(0,-minZ);
+}
+function configureLatheUnitInputs(unit){
+  const step=unit==='in'?'0.001':'0.1';
+  for(const input of $$('.lathe-length'))input.step=step;
+  const minSmall=unit==='in'?'0.001':'0.1';
+  for(const id of ['#latheDiameter','#latheLength','#latheStickout','#latheChuckLength'])$(id).min=minSmall;
+  $('#latheResolution').min=unit==='in'?'0.001':'0.05';
+}
 function updateLatheGripInfo(){
   const info=$('#latheGripInfo');if(!info)return;
-  const u=$('#latheUnit')?.value||latheDisplayUnit||'mm',length=Math.max(0,+$('#latheLength').value||0),stickout=Math.max(0,+$('#latheStickout').value||0),held=Math.max(0,length-stickout);
-  info.textContent=`La cara frontal está en Z0. Quedan ${formatNumber(held)} ${u} dentro del plato y ${formatNumber(Math.min(stickout,length))} ${u} disponibles para maquinar.`;
-  info.classList.toggle('warning-text',stickout>length||held<Math.max(3,(+$('#latheDiameter').value||0)*.12));
+  const u=$('#latheUnit')?.value||latheDisplayUnit||'mm',length=Math.max(0,+$('#latheLength').value||0),stickout=Math.max(0,+$('#latheStickout').value||0),held=Math.max(0,length-stickout),required=lengthInUnit(latheProgramReach(),u);
+  const reachText=required>0?` El programa llega hasta Z-${formatNumber(required)} ${u}; necesita al menos esa longitud expuesta.`:'';
+  info.textContent=`La cara frontal está en Z0. Quedan ${formatNumber(held)} ${u} dentro del plato y ${formatNumber(Math.min(stickout,length))} ${u} disponibles para maquinar.${reachText}`;
+  info.classList.toggle('warning-text',stickout>length||held<Math.max(unit==='in'?.125:3,(+$('#latheDiameter').value||0)*.12)||(required>0&&stickout+1e-6<required));
 }
-
-function setLatheStockForm(){const s=latheConfig.stock,u=s.units||'mm',safe={...DEFAULT_LATHE_STOCK.safety,...(s.safety||{})};latheDisplayUnit=u;$('#latheUnit').value=u;$('#latheDiameter').value=lengthInUnit(s.diameter,u);$('#latheBore').value=lengthInUnit(s.bore,u);$('#latheLength').value=lengthInUnit(s.length,u);$('#latheStickout').value=lengthInUnit(s.stickout,u);$('#latheChuckLength').value=lengthInUnit(s.chuckLength,u);$('#latheResolution').value=lengthInUnit(s.resolution,u);$('#latheQuality').value=s.renderQuality||'high';$('#latheZeroMode').value=s.zeroMode||'front';$('#latheOffsetX').value=lengthInUnit(latheConfig.offsets.G54?.x||0,u);$('#latheSafetyEnabled').checked=safe.enabled!==false;$('#latheChuckClearance').value=lengthInUnit(safe.chuckClearance,u);$('#latheHolderClearance').value=lengthInUnit(safe.holderClearance,u);$('#latheXLimit').value=lengthInUnit(safe.xLimit,u);$('#latheZMargin').value=lengthInUnit(safe.zMargin,u);$('#stopOnCollision').checked=safe.stopOnCollision!==false;$$('.lathe-unit-mark').forEach(mark=>mark.textContent=`(${u})`);updateLatheGripInfo();}
+function setLatheStockForm(){
+  const s=latheConfig.stock,u=s.units||'mm',safe={...DEFAULT_LATHE_STOCK.safety,...(s.safety||{})};latheDisplayUnit=u;$('#latheUnit').value=u;configureLatheUnitInputs(u);
+  $('#latheDiameter').value=lengthInputValue(s.diameter,u);$('#latheBore').value=lengthInputValue(s.bore,u);$('#latheLength').value=lengthInputValue(s.length,u);$('#latheStickout').value=lengthInputValue(s.stickout,u);$('#latheChuckLength').value=lengthInputValue(s.chuckLength,u);$('#latheResolution').value=lengthInputValue(s.resolution,u);$('#latheQuality').value=s.renderQuality||'high';$('#latheZeroMode').value=s.zeroMode||'front';$('#latheOffsetX').value=lengthInputValue(latheConfig.offsets.G54?.x||0,u);$('#latheSafetyEnabled').checked=safe.enabled!==false;$('#latheChuckClearance').value=lengthInputValue(safe.chuckClearance,u);$('#latheHolderClearance').value=lengthInputValue(safe.holderClearance,u);$('#latheXLimit').value=lengthInputValue(safe.xLimit,u);$('#latheZMargin').value=lengthInputValue(safe.zMargin,u);$('#stopOnCollision').checked=safe.stopOnCollision!==false;$$('.lathe-unit-mark').forEach(mark=>mark.textContent=`(${u})`);updateLatheGripInfo();
+}
 function latheStockSettings(){const u=$('#latheUnit').value,scale=UNIT_SCALE[u]||1,length=+$('#latheLength').value*scale,zMargin=+$('#latheZMargin').value*scale;return{units:u,diameter:+$('#latheDiameter').value*scale,bore:+$('#latheBore').value*scale,length,stickout:+$('#latheStickout').value*scale,chuckLength:+$('#latheChuckLength').value*scale,resolution:+$('#latheResolution').value*scale,renderQuality:$('#latheQuality').value,zeroMode:$('#latheZeroMode').value,safety:{enabled:$('#latheSafetyEnabled').checked,chuckClearance:+$('#latheChuckClearance').value*scale,holderClearance:+$('#latheHolderClearance').value*scale,xLimit:+$('#latheXLimit').value*scale,zMargin,zMin:-length-zMargin,zMax:zMargin,stopOnCollision:$('#stopOnCollision').checked}};}
 function openLatheStockDialog(){setLatheStockForm();$('#latheStockDialog').showModal();}
 function applyLatheStock(){latheConfig.stock={...latheConfig.stock,...latheStockSettings()};$('#stopOnCollision').checked=latheConfig.stock.safety?.stopOnCollision!==false;latheConfig.offsets.G54.x=lengthToMm($('#latheOffsetX').value,$('#latheUnit').value);latheConfig.offsets.G54.z=latheConfig.stock.zeroMode==='back'?-latheConfig.stock.length:0;latheSim.configure(latheConfig.stock);latheSim.setRenderQuality(latheConfig.stock.renderQuality);$('#renderQuality').value=latheConfig.stock.renderQuality;$('#latheStockDialog').close();updateSummaries();compileProgram({silent:true});toast('Barra y plato actualizados');}
@@ -453,7 +476,7 @@ $('#zeroOffsetBtn').addEventListener('click',()=>{$('#offsetX').value=0;$('#offs
 $('#applyOffsetBtn').addEventListener('click',event=>{event.preventDefault();applyOffsets();});
 $('#applyToolBtn').addEventListener('click',event=>{event.preventDefault();applyTool();});
 $('#applyLatheStockBtn').addEventListener('click',event=>{event.preventDefault();applyLatheStock();});
-$('#latheUnit').addEventListener('change',event=>{const next=event.target.value,old=latheDisplayUnit;for(const input of $$('.lathe-length'))input.value=lengthInUnit(lengthToMm(input.value,old),next);latheDisplayUnit=next;$$('.lathe-unit-mark').forEach(mark=>mark.textContent=`(${next})`);updateLatheGripInfo();});
+$('#latheUnit').addEventListener('change',event=>{const next=event.target.value,old=latheDisplayUnit;for(const input of $$('.lathe-length'))input.value=lengthInputValue(lengthToMm(input.value,old),next);latheDisplayUnit=next;configureLatheUnitInputs(next);$$('.lathe-unit-mark').forEach(mark=>mark.textContent=`(${next})`);updateLatheGripInfo();});
 for(const input of $$('#latheLength, #latheStickout, #latheDiameter'))input.addEventListener('input',updateLatheGripInfo);
 $('#latheToolSlotList').addEventListener('click',event=>{const slot=event.target.closest('[data-lathe-tool]');if(slot)loadLatheToolFields(+slot.dataset.latheTool);});
 $('#applyLatheToolBtn').addEventListener('click',event=>{event.preventDefault();applyLatheTool();});
