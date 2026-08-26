@@ -411,6 +411,32 @@ function showSimulator(){
 function showHome(){
   stopPlayback();closeMenus();appRoot.classList.add('hidden');$('#homeScreen').classList.remove('hidden');appRoot.classList.remove('sim-maximized');
 }
+function clearExternalLaunchParams(){
+  if(!history.replaceState)return;
+  const clean=`${location.pathname}${location.hash||''}`;
+  history.replaceState(null,'',clean);
+}
+function showExternalOpenPrompt(kind,machine){
+  const type=machine==='lathe'?'lathe':'mill',isProject=kind==='project';
+  const old=document.querySelector('.external-open-prompt');if(old)old.remove();
+  const overlay=document.createElement('div');overlay.className='external-open-prompt';
+  const machineLabel=type==='lathe'?'torno':'fresa',fileLabel=isProject?'proyecto':'código';
+  overlay.innerHTML=`<div class="external-open-card"><span class="external-open-eyebrow">CNCVEXA SIMULATOR</span><h2>Abrir ${fileLabel} de ${machineLabel}</h2><p>Selecciona el archivo desde tu dispositivo para continuar.</p><div class="external-open-actions"><button type="button" class="external-open-cancel">Cancelar</button><button type="button" class="external-open-select">Seleccionar archivo</button></div></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.external-open-cancel').addEventListener('click',()=>{overlay.remove();clearExternalLaunchParams();showHome();});
+  overlay.querySelector('.external-open-select').addEventListener('click',()=>{overlay.remove();clearExternalLaunchParams();homeOpen(kind,type);});
+}
+function handleExternalLaunch(){
+  const params=new URLSearchParams(location.search),action=params.get('action'),machine=params.get('machine');
+  if(!['new','program','project'].includes(action)||!['mill','lathe'].includes(machine))return false;
+  if(action==='new'){
+    clearExternalLaunchParams();homeNewProject(machine);return true;
+  }
+  switchMachine(machine,{saveCurrent:true,restoreSession:false,compile:false});
+  showSimulator();
+  setTimeout(()=>showExternalOpenPrompt(action,machine),50);
+  return true;
+}
 function projectMachine(project){return project?.machineType==='lathe'||project?.latheConfig?'lathe':'mill';}
 function homeNewProject(machine){
   const type=machine==='lathe'?'lathe':'mill';switchMachine(type,{saveCurrent:true,restoreSession:false,compile:false});
@@ -542,4 +568,4 @@ window.addEventListener('keydown',event=>{
 window.addEventListener('resize',()=>sim.resize());
 window.addEventListener('beforeunload',event=>{saveLocal(false);if(dirty){event.preventDefault();event.returnValue='';}});
 
-repopulateCategories();editor.value='';resetHistory('');updateEditorChrome();syncWorkspaceConfig(DEFAULT_WORKSPACE);setStockForm(config.workspace);loadToolFields();applyStock({compile:false,close:false,notify:false});millSim.setCurrentTool(config.tools[3]);latheSim.configure(latheConfig.stock);latheSim.setCurrentTool(latheConfig.tools[1]);renderDictionary();compileProgram({silent:true});setDirty(false);setDisplayMode('3d');setView('iso');updateSummaries();setStatus('Preparado');showHome();
+repopulateCategories();editor.value='';resetHistory('');updateEditorChrome();syncWorkspaceConfig(DEFAULT_WORKSPACE);setStockForm(config.workspace);loadToolFields();applyStock({compile:false,close:false,notify:false});millSim.setCurrentTool(config.tools[3]);latheSim.configure(latheConfig.stock);latheSim.setCurrentTool(latheConfig.tools[1]);renderDictionary();compileProgram({silent:true});setDirty(false);setDisplayMode('3d');setView('iso');updateSummaries();setStatus('Preparado');if(!handleExternalLaunch())showHome();
