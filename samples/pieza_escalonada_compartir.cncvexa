@@ -1,0 +1,127 @@
+{
+  "format": "CNCVEXA_PROJECT",
+  "version": 5.3,
+  "machineType": "lathe",
+  "name": "pieza_escalonada_compartir.nc",
+  "code": "O1025 (EJE ESCALONADO CON G71 Y G70)\nG18 G21 G40 G80 G90 G95\nG50 S2500\nG54\nT0101\nG97 S1200 M03\nM08\nG00 X27.0 Z2.0\nG71 U1.0 R0.5\nG71 P100 Q170 U0.2 W0.1 F0.18\nG00 X30.0 Z5.0\nG70 P100 Q170\nG00 X30.0 Z5.0\nM09\nM05\nG28 U0 W0\nM30\n\nN100 G00 X10.0 Z0.0\nN110 G01 Z-15.0 F0.08\nN120 X15.0\nN130 Z-25.0\nN140 X20.0\nN150 Z-35.0\nN160 X25.0\nN170 Z-40.0\n",
+  "latheConfig": {
+    "stock": {
+      "units": "mm",
+      "diameter": 25,
+      "bore": 0,
+      "length": 45,
+      "stickout": 40,
+      "chuckLength": 20,
+      "resolution": 0.25,
+      "renderQuality": "ultra",
+      "zeroMode": "front",
+      "safety": {
+        "enabled": true,
+        "chuckClearance": 1,
+        "holderClearance": 3,
+        "xLimit": 100,
+        "zMargin": 100,
+        "zMin": -145,
+        "zMax": 100,
+        "stopOnCollision": false
+      }
+    },
+    "offsets": {
+      "G54": {
+        "x": 0,
+        "z": 0
+      },
+      "G55": {
+        "x": 0,
+        "z": 0
+      },
+      "G56": {
+        "x": 0,
+        "z": 0
+      },
+      "G57": {
+        "x": 0,
+        "z": 0
+      },
+      "G58": {
+        "x": 0,
+        "z": 0
+      },
+      "G59": {
+        "x": 0,
+        "z": 0
+      }
+    },
+    "tools": {
+      "1": {
+        "name": "Buril exterior 80°",
+        "type": "od",
+        "noseRadius": 0.4,
+        "insertWidth": 6,
+        "orientation": 3,
+        "offset": 1
+      },
+      "2": {
+        "name": "Buril de acabado 55°",
+        "type": "finish",
+        "noseRadius": 0.2,
+        "insertWidth": 5,
+        "orientation": 3,
+        "offset": 2
+      },
+      "3": {
+        "name": "Ranurador 3 mm",
+        "type": "groove",
+        "noseRadius": 0.2,
+        "insertWidth": 3,
+        "orientation": 3,
+        "offset": 3
+      },
+      "4": {
+        "name": "Roscador 60°",
+        "type": "thread",
+        "noseRadius": 0.15,
+        "insertWidth": 4,
+        "orientation": 3,
+        "offset": 4
+      },
+      "5": {
+        "name": "Barra de mandrinar",
+        "type": "boring",
+        "noseRadius": 0.4,
+        "insertWidth": 5,
+        "orientation": 2,
+        "offset": 5
+      },
+      "6": {
+        "name": "Broca axial Ø10 mm",
+        "type": "drill",
+        "noseRadius": 5,
+        "insertWidth": 10,
+        "orientation": 1,
+        "offset": 6
+      }
+    }
+  },
+  "displayMode": "3d",
+  "displayOptions": {
+    "showRapids": true,
+    "showCuts": true,
+    "showGrid": true,
+    "showTable": true,
+    "showTurret": true,
+    "stopOnCollision": false
+  },
+  "camera": {
+    "yaw": -0.6108652382,
+    "pitch": 0.3839724354,
+    "zoom": 1.25,
+    "panX": 0,
+    "panY": 0,
+    "viewMode": "3d"
+  },
+  "layout": {
+    "editorShare": "36%",
+    "dockCollapsed": false
+  }
+}

@@ -1,4 +1,4 @@
-import {evaluateExpression,evaluateCondition} from './expression.js?v=5.11.0';
+import {evaluateExpression,evaluateCondition} from './expression.js?v=5.6.0';
 
 const stripComments=line=>line.replace(/\([^)]*\)/g,'').replace(/;.*/,'').trim().toUpperCase();
 const unitFactor=state=>state.units==='G20'?25.4:1;
@@ -6,7 +6,7 @@ const canonicalG=raw=>{const [whole,decimal]=String(raw).split('.');return `G${w
 const canonicalM=raw=>`M${String(raw).padStart(2,'0')}`;
 const cloneState=s=>({...s,machine:{...s.machine},work:{...s.work},local:{...s.local},rotation:{...s.rotation,center:{...(s.rotation?.center||{x:0,y:0,z:0})}},polar:{...s.polar,center:{...(s.polar?.center||{x:0,y:0,z:0})}},cycle:s.cycle?{...s.cycle}:null});
 
-export class FanucInterpreter{
+export class CNCInterpreter{
   constructor(config={}){this.config=config;this.reset();}
 
   reset(){

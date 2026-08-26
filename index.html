@@ -4,41 +4,80 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#09131d">
-  <meta name="description" content="FANUC Forge es un simulador CNC educativo en línea para practicar programación FANUC en fresadora y torno, con código G, macros, ciclos, herramientas y simulación 2D y 3D.">
-  <meta name="robots" content="index, follow, max-image-preview:large">
-  <link rel="canonical" href="https://silverpsychoo.github.io/Fanuc-Forge/">
+  <title>CNCVexa Simulator — Simulador CNC de Fresa y Torno</title>
+  <meta name="description" content="CNCVexa Simulator es un simulador CNC educativo en línea para practicar código CNC de fresadora y torno con editor, herramientas, ciclos y simulación 2D/3D.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://silverpsychoo.github.io/CNCVexa-Simulator/">
+  <meta property="og:title" content="CNCVexa Simulator — Simulador CNC">
+  <meta property="og:description" content="Simulador CNC educativo para fresadora y torno directamente desde el navegador.">
   <meta property="og:type" content="website">
-  <meta property="og:locale" content="es_MX">
-  <meta property="og:title" content="FANUC Forge — Simulador CNC para Fresa y Torno">
-  <meta property="og:description" content="Practica código G, macros, ciclos y herramientas FANUC con simulación CNC 2D y 3D desde el navegador.">
-  <meta property="og:url" content="https://silverpsychoo.github.io/Fanuc-Forge/">
-  <meta property="og:image" content="https://silverpsychoo.github.io/Fanuc-Forge/assets/logo.png">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="FANUC Forge — Simulador CNC para Fresa y Torno">
-  <meta name="twitter:description" content="Simulador CNC educativo con programación estilo FANUC y vistas 2D/3D.">
-  <meta name="twitter:image" content="https://silverpsychoo.github.io/Fanuc-Forge/assets/logo.png">
+  <meta property="og:url" content="https://silverpsychoo.github.io/CNCVexa-Simulator/">
+  <meta property="og:image" content="https://silverpsychoo.github.io/CNCVexa-Simulator/assets/brand-full.png">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=5.6.0">
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",
     "@type":"SoftwareApplication",
-    "name":"FANUC Forge",
-    "url":"https://silverpsychoo.github.io/Fanuc-Forge/",
+    "name":"CNCVexa Simulator",
     "applicationCategory":"EducationalApplication",
     "operatingSystem":"Web",
-    "inLanguage":"es",
-    "description":"Simulador CNC educativo para fresadora y torno con programación estilo FANUC.",
-    "offers":{"@type":"Offer","price":"0","priceCurrency":"MXN"}
+    "description":"Simulador CNC educativo para fresadora y torno con editor de código y visualización 2D/3D.",
+    "url":"https://silverpsychoo.github.io/CNCVexa-Simulator/"
   }
   </script>
-  <title>FANUC Forge — Simulador CNC FANUC para Fresa y Torno</title>
-  <link rel="stylesheet" href="styles.css?v=5.11.0">
 </head>
 <body>
-  <div id="appRoot" class="app-root">
+  <section id="homeScreen" class="home-screen" aria-label="Inicio de CNCVexa Simulator">
+    <div class="home-shell">
+      <header class="home-hero">
+        <img class="home-brand-image" src="assets/brand-full.png" alt="CNCVexa Simulator">
+        <h1>CNCVexa Simulator</h1>
+        <p>Simulador CNC educativo para crear, abrir y probar programas de fresadora y torno directamente desde el navegador.</p>
+      </header>
+      <div class="home-layout">
+        <aside class="home-ad-area home-ad-area-left" aria-label="Área de publicidad izquierda">
+          <div class="home-ad-heading"><span>PUBLICIDAD</span><small>Solo se mostrará en esta pantalla.</small></div>
+          <div class="home-ad-slot">
+            <strong>Espacio para Google AdSense</strong>
+            <span>Aquí podrás colocar un bloque publicitario lateral o contenido promocional.</span>
+          </div>
+          <!-- CNCVEXA_ADSENSE_HOME_LEFT: insertar aquí un bloque manual lateral -->
+        </aside>
+
+        <section class="home-projects" aria-label="Crear o abrir proyectos CNC">
+          <div class="home-section-heading"><span>PROYECTOS</span><h2>¿Qué quieres hacer?</h2></div>
+          <div class="home-action-grid">
+            <button class="home-action-card" data-home-action="new" data-home-machine="mill"><span class="home-action-icon">▦</span><span><strong>Nuevo proyecto de fresa</strong><small>Comienza un programa CNC de fresadora desde cero.</small></span></button>
+            <button class="home-action-card" data-home-action="new" data-home-machine="lathe"><span class="home-action-icon">◉</span><span><strong>Nuevo proyecto de torno</strong><small>Comienza un programa CNC de torno desde cero.</small></span></button>
+            <button class="home-action-card" data-home-action="program" data-home-machine="mill"><span class="home-action-icon">↥</span><span><strong>Abrir código fresa</strong><small>Importa un archivo .NC, .TAP, .TXT, .CNC o .GCODE.</small></span></button>
+            <button class="home-action-card" data-home-action="program" data-home-machine="lathe"><span class="home-action-icon">↥</span><span><strong>Abrir código torno</strong><small>Importa código existente y ábrelo directamente en torno.</small></span></button>
+            <button class="home-action-card" data-home-action="project" data-home-machine="mill"><span class="home-action-icon">◇</span><span><strong>Abrir proyecto fresa</strong><small>Recupera código, pieza, herramientas, offsets y vista.</small></span></button>
+            <button class="home-action-card" data-home-action="project" data-home-machine="lathe"><span class="home-action-icon">◇</span><span><strong>Abrir proyecto torno</strong><small>Recupera barra, torreta, herramientas, offsets y vista.</small></span></button>
+          </div>
+        </section>
+
+        <aside class="home-ad-area home-ad-area-right" aria-label="Área de publicidad derecha">
+          <div class="home-ad-heading"><span>PUBLICIDAD</span><small>Solo se mostrará en esta pantalla.</small></div>
+          <div id="homeAdSlot" class="home-ad-slot">
+            <strong>Espacio para Google AdSense</strong>
+            <span>Aquí podrás colocar tu bloque publicitario principal cuando tengas el código de AdSense.</span>
+          </div>
+          <!-- CNCVEXA_ADSENSE_HOME_ONLY: insertar aquí el bloque manual de Google AdSense -->
+        </aside>
+      </div>
+      <footer class="home-footer"><span>CNCVexa Simulator v5.6</span><span>Fresa · Torno · Código CNC · Simulación 2D/3D</span></footer>
+    </div>
+  </section>
+
+  <div id="appRoot" class="app-root hidden">
     <header class="topbar">
-      <div class="brand" title="FANUC Forge">
-        <img class="brand-logo" src="assets/logo.png" alt="Logo FANUC Forge">
-        <div class="brand-copy"><strong>FANUC Forge</strong><span>Simulador CNC FANUC</span></div>
+      <button class="home-return-button" data-action="home" title="Volver al inicio" aria-label="Volver al inicio">⌂</button>
+      <div class="brand" title="CNCVexa Simulator">
+        <img class="brand-logo" src="assets/logo.png" alt="Logo de CNCVexa Simulator">
+        <div class="brand-copy"><strong>CNCVexa</strong><span>Simulador CNC</span></div>
       </div>
 
       <nav class="menu-bar" aria-label="Menú principal">
@@ -50,7 +89,7 @@
             <button data-action="saveProgram"><span>Guardar programa .NC</span><kbd>Ctrl+S</kbd></button>
             <div class="menu-separator"></div>
             <button data-action="openProject"><span>Abrir proyecto…</span><kbd>Ctrl+Shift+O</kbd></button>
-            <button data-action="saveProject"><span>Guardar proyecto .FFCNC</span><kbd>Ctrl+Shift+S</kbd></button>
+            <button data-action="saveProject"><span>Guardar proyecto .CNCVEXA</span><kbd>Ctrl+Shift+S</kbd></button>
             <button data-action="saveLocal"><span>Guardar recuperación local</span></button>
             <button data-action="loadLocal"><span>Recuperar guardado local</span></button>
           </div>
@@ -98,7 +137,7 @@
           <div id="helpMenu" class="menu-popover align-right">
             <button data-action="showCodes"><span>Biblioteca de códigos</span></button>
             <button data-action="shortcuts"><span>Atajos y controles 3D</span></button>
-            <button data-action="about"><span>Acerca de FANUC Forge</span></button>
+            <button data-action="about"><span>Acerca de CNCVexa Simulator</span></button>
           </div>
         </div>
       </nav>
@@ -119,7 +158,7 @@
       <section class="workbench" id="workbench">
         <article class="editor-panel panel" id="editorPanel">
           <header class="panel-titlebar">
-            <div class="document-title"><span class="file-dot"></span><strong id="programName">programa_fanuc.nc</strong><span id="dirtyMark" class="dirty-mark hidden">●</span></div>
+            <div class="document-title"><span class="file-dot"></span><strong id="programName" class="editable-filename" tabindex="0" title="Haz clic para cambiar el nombre del archivo">programa_cnc.nc</strong><span id="dirtyMark" class="dirty-mark hidden">●</span></div>
             <div class="panel-tools">
               <button data-action="format" title="Formatear">Formatear</button>
               <button data-action="compile" class="primary-soft">Validar</button>
@@ -128,8 +167,8 @@
           <div id="autocomplete" class="autocomplete hidden" role="listbox" aria-label="Sugerencias de autocompletado"></div>
           <div class="editor-shell" id="editorShell">
             <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
-            <textarea id="codeEditor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Editor de programa FANUC"></textarea>
-            <div id="dropOverlay" class="drop-overlay hidden">Suelta aquí tu archivo .NC, .TXT, .TAP o proyecto .FFCNC</div>
+            <textarea id="codeEditor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Editor de programa CNC"></textarea>
+            <div id="dropOverlay" class="drop-overlay hidden">Suelta aquí tu archivo .NC, .TXT, .TAP o proyecto .CNCVEXA</div>
           </div>
           <footer class="editor-status">
             <span id="cursorStatus">Ln 1, Col 1</span>
@@ -197,7 +236,7 @@
         <header class="dock-tabs">
           <button class="dock-tab active" data-dock="diagnostics">Diagnóstico <span id="alarmCount" class="badge">0</span></button>
           <button class="dock-tab" data-dock="variables">Variables Macro</button>
-          <button class="dock-tab" data-dock="codes">Códigos FANUC <span id="codeCount" class="badge neutral">0</span></button>
+          <button class="dock-tab" data-dock="codes">Códigos CNC <span id="codeCount" class="badge neutral">0</span></button>
           <button class="dock-tab" data-dock="trace">Traza</button>
           <button class="dock-collapse" data-action="toggleDock" title="Ocultar panel">⌄</button>
         </header>
@@ -208,7 +247,7 @@
         </div>
         <div id="codesPane" class="dock-pane">
           <div class="dock-filter code-filters"><input id="codeFilter" placeholder="Buscar G83, G54.1, WHILE, corrector…"><select id="categoryFilter"><option value="">Todas las categorías</option></select><select id="supportFilter"><option value="">Todo el catálogo</option><option value="full">Simulado</option><option value="partial">Parcial</option><option value="reference">Referencia</option></select></div>
-          <div class="catalog-note">La disponibilidad exacta depende del modelo FANUC, opciones instaladas y fabricante de la máquina. Los códigos M pueden ser personalizados por el constructor.</div>
+          <div class="catalog-note">La disponibilidad exacta depende del control, las opciones instaladas y el fabricante de la máquina. Los códigos M pueden ser personalizados por el constructor.</div>
           <div id="codeDictionary" class="code-dictionary"></div>
         </div>
         <div id="tracePane" class="dock-pane"><pre id="traceLog">Sin ejecución.</pre></div>
@@ -221,12 +260,12 @@
       <span id="offsetSummary">G54 X0 Y0 Z0</span>
       <span id="toolSummary">T3 Ø10 H50</span>
       <span class="status-spacer"></span>
-      <span>FANUC Forge Studio v5.11</span>
+      <span>CNCVexa Simulator v5.6</span>
     </footer>
   </div>
 
   <input id="programFileInput" type="file" accept=".nc,.tap,.txt,.cnc,.gcode" hidden>
-  <input id="projectFileInput" type="file" accept=".ffcnc,.json" hidden>
+  <input id="projectFileInput" type="file" accept=".cncvexa,.json" hidden>
 
   <dialog id="stockDialog" class="app-dialog wide-dialog">
     <form method="dialog" class="dialog-card">
@@ -274,7 +313,7 @@
           <div class="tool-slot-actions"><button id="restoreToolTableBtn" type="button">Restaurar tabla base</button><button id="deleteToolSlotBtn" type="button" class="danger-soft">Eliminar ranura</button></div>
         </aside>
         <section class="tool-editor-panel">
-          <div class="tool-standard-note"><strong>La T identifica una posición de la tabla, no un tipo universal de cortador.</strong><span>FANUC Forge incluye una tabla educativa predeterminada, pero cada máquina o taller puede asignar herramientas diferentes.</span></div>
+          <div class="tool-standard-note"><strong>La T identifica una posición de la tabla, no un tipo universal de cortador.</strong><span>CNCVexa incluye una tabla educativa predeterminada, pero cada máquina o taller puede asignar herramientas diferentes.</span></div>
           <div class="tool-preview large"><div id="toolIcon" class="tool-icon flat"></div><div><strong id="toolTitle">T3 · Fresa plana Ø3 mm</strong><span id="toolDescription">Geometría usada tanto en la trayectoria como en la remoción de material.</span></div></div>
           <div class="form-section tool-library-section"><h3>Ranura y cortador asignado</h3><div class="form-grid three"><label>Número T<input id="toolNumber" type="number" min="1" max="999" step="1" value="3" readonly></label><label>Sistema de medidas<select id="toolUnit"><option value="mm">Métrico (mm)</option><option value="in">Imperial (in)</option></select></label><label>Biblioteca<select id="toolPreset"></select></label></div><p id="toolPresetInfo" class="help-text"></p></div>
           <div class="form-section"><h3>Geometría del cortador</h3><div class="form-grid four"><label>Tipo<select id="toolType"><option value="flat">Fresa plana</option><option value="ball">Fresa de punta bola</option><option value="face">Fresa de planeado</option><option value="drill">Broca</option><option value="chamfer">Avellanador / chaflán</option></select></label><label>Nombre<input id="toolName" type="text" value="Fresa plana Ø3 mm"></label><label>Diámetro Ø <span id="toolUnitMark">(mm)</span><input id="toolDiameter" type="number" min="0.001" step="0.001" value="3"></label><label>Longitud visible <span id="toolLengthUnitMark">(mm)</span><input id="toolLength" type="number" min="0" step="0.001" value="45"></label></div><div id="toolAngleRow" class="form-grid two hidden-field"><label>Ángulo incluido (grados)<input id="toolAngle" type="number" min="10" max="180" step="1" value="90"></label><div class="tool-note">Se usa para aproximar la punta de brocas y cortadores de chaflán.</div></div><p class="help-text">Cambiar la biblioteca modifica únicamente la ranura T seleccionada cuando presionas “Guardar herramienta”.</p></div>
@@ -325,13 +364,13 @@
 
   <dialog id="infoDialog" class="app-dialog info-dialog">
     <form method="dialog" class="dialog-card">
-      <header><div><span class="eyebrow">FANUC FORGE</span><h2 id="infoDialogTitle">Información</h2></div><button class="dialog-close" value="cancel">×</button></header>
+      <header><div><span class="eyebrow">CNCVEXA</span><h2 id="infoDialogTitle">Información</h2></div><button class="dialog-close" value="cancel">×</button></header>
       <div id="infoDialogBody" class="dialog-body prose"></div>
       <footer><button value="default" class="primary">Entendido</button></footer>
     </form>
   </dialog>
 
   <div id="toast" class="toast hidden"></div>
-  <script type="module" src="js/app.js?v=5.11.0"></script>
+  <script type="module" src="js/app.js?v=5.6.0"></script>
 </body>
 </html>

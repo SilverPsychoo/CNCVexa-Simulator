@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://silverpsychoo.github.io/Fanuc-Forge/sitemap.xml
+Sitemap: https://silverpsychoo.github.io/CNCVexa-Simulator/sitemap.xml

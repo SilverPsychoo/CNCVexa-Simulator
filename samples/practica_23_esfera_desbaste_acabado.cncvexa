@@ -1,0 +1,123 @@
+{
+  "format": "CNCVEXA_PROJECT",
+  "version": 4.5,
+  "name": "practica_23_esfera_desbaste_acabado.nc",
+  "code": "O2301 (PRACTICA 23 - DESBASTE Y ACABADO DE MEDIA ESFERA)\nG17 G21 G90 G94 G40 G49 G69 G80\n\n(1. DESBASTE DEL MATERIAL ALREDEDOR)\nT10 M06\nM03 S4500\nG54\nG43 H10 G00 Z10.0\n#120 = 52.0\nN20\nG00 X#120 Y0.0\nG01 Z-30.0 F180 M08\nG17\nG03 I[-#120] J0.0 F500\nG00 Z5.0\n#120 = [#120 - 5.0]\nIF [#120 GE 37.0] GOTO 20\nG00 Z15.0\nM09\n\n(2. ACABADO ESFERICO CON PUNTA BOLA)\nT36 M06\nM03 S6000\nG43 H36 G00 Z15.0\n#100 = 0.0      (ANGULO DEL PERFIL)\n#101 = 30.0     (RADIO DE LA ESFERA)\n#102 = 3.0      (RADIO DE LA HERRAMIENTA)\n#103 = [#101 + #102]\n#104 = [-#101 - #102]\n#105 = [#103 * COS[#100]]\n#106 = [#104 + #103 * SIN[#100]]\nG00 X#105 Y0.0\nG01 Z#106 F180 M08\n\nN100\nG17\nG03 I[-#105] J0.0 F350\n#100 = [#100 + 5.0]\nIF [#100 GT 85.0] GOTO 200\n#107 = [#103 * COS[#100]]\n#108 = [#104 + #103 * SIN[#100]]\nG18\nG03 X#107 Z#108 I[-#105] K[#104 - #106] F180\n#105 = #107\n#106 = #108\nGOTO 100\n\nN200\nG18\nG03 X0.0 Z0.0 I[-#105] K[#104 - #106] F180\nG17\nG00 Z15.0\nM05 M09\nG91 G28 Z0.0\nG90\nM30\n",
+  "config": {
+    "stockTop": 0,
+    "stockBounds": {
+      "minX": -35,
+      "maxX": 35,
+      "minY": -35,
+      "maxY": 35,
+      "minZ": -35,
+      "maxZ": 0
+    },
+    "workspace": {
+      "units": "mm",
+      "x": 70,
+      "y": 70,
+      "z": 35,
+      "resolution": 0.75,
+      "renderQuality": "ultra",
+      "zeroMode": "center",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "table": {
+        "x": 180,
+        "y": 140,
+        "z": 20,
+        "topZ": -35,
+        "slotDirection": "x"
+      }
+    },
+    "offsets": {
+      "G54": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "G55": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "G56": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "G57": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "G58": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "G59": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    "tools": {
+      "10": {
+        "diameter": 10,
+        "length": 70,
+        "type": "flat",
+        "name": "Fresa plana Ø10 mm",
+        "angle": 90,
+        "displayUnit": "mm",
+        "presetId": "m-flat-10"
+      },
+      "36": {
+        "diameter": 6,
+        "length": 60,
+        "type": "ball",
+        "name": "Punta bola Ø6 mm",
+        "angle": 90,
+        "displayUnit": "mm",
+        "presetId": "m-ball-6"
+      }
+    }
+  },
+  "workspace": {
+    "units": "mm",
+    "x": 70,
+    "y": 70,
+    "z": 35,
+    "resolution": 0.75,
+    "renderQuality": "ultra",
+    "zeroMode": "center",
+    "position": {
+      "x": 0,
+      "y": 0
+    },
+    "table": {
+      "x": 180,
+      "y": 140,
+      "z": 20,
+      "topZ": -35,
+      "slotDirection": "x"
+    }
+  },
+  "camera": {
+    "yaw": -0.7853981634,
+    "pitch": 0.6108652382,
+    "zoom": 1.15,
+    "panX": 0,
+    "panY": 0,
+    "view": "free",
+    "focusTarget": "stock"
+  },
+  "displayMode": "3d",
+  "layout": {
+    "editorShare": "34%",
+    "dockCollapsed": false
+  }
+}
