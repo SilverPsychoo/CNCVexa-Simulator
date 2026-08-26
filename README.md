@@ -8,7 +8,7 @@
 
 Editor de código, macros, herramientas, ciclos de maquinado y simulación 2D/3D directamente desde el navegador.
 
-[**Abrir simulador**](https://silverpsychoo.github.io/CNCVexa-Simulator/) · [Reportar un problema](../../issues) · [Proponer una mejora](../../issues)
+[**Abrir simulador**](https://cncvexa.com/) · [Reportar un problema](../../issues) · [Proponer una mejora](../../issues)
 
 </div>
 
@@ -196,7 +196,7 @@ Esto permite abrir después el trabajo exactamente como se dejó.
 
 Abre la versión publicada:
 
-**https://silverpsychoo.github.io/CNCVexa-Simulator/**
+**https://cncvexa.com/**
 
 No es necesario instalar Python ni mantener un servidor encendido.
 
@@ -328,3 +328,10 @@ Para reportar un error:
 Desarrollado por **SilverPsycho**
 
 GitHub: [@SilverPsychoo](https://github.com/SilverPsychoo)
+
+---
+
+## Aviso
+
+CNCVexa Simulator es un proyecto independiente con fines educativos.  
+No representa ni sustituye a un control CNC industrial específico.

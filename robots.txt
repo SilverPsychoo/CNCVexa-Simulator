@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://silverpsychoo.github.io/CNCVexa-Simulator/sitemap.xml
+Sitemap: https://cncvexa.com/sitemap.xml

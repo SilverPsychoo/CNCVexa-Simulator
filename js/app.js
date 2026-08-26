@@ -409,7 +409,9 @@ function showSimulator(){
   requestAnimationFrame(()=>{sim.resize();if(machineType==='lathe')sim.fitView();else sim.fitView('scene');});
 }
 function showHome(){
-  stopPlayback();closeMenus();appRoot.classList.add('hidden');$('#homeScreen').classList.remove('hidden');appRoot.classList.remove('sim-maximized');
+  stopPlayback();closeMenus();appRoot.classList.remove('sim-maximized');
+  appRoot.classList.add('hidden');$('#homeScreen').classList.remove('hidden');
+  if(history.replaceState && location.search) history.replaceState(null,'',`${location.pathname}${location.hash||''}`);
 }
 function clearExternalLaunchParams(){
   if(!history.replaceState)return;
