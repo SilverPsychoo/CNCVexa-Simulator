@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.6.0">
+  <link rel="stylesheet" href="styles.css?v=5.6.2">
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",
@@ -38,6 +38,10 @@
         <img class="home-brand-image" src="assets/brand-full.png" alt="CNCVexa Simulator">
         <h1>CNCVexa Simulator</h1>
         <p>Simulador CNC educativo para crear, abrir y probar programas de fresadora y torno directamente desde el navegador.</p>
+        <div class="language-switch home-language-switch" role="group" aria-label="Idioma">
+          <button type="button" data-language="es" aria-pressed="true">ES</button>
+          <button type="button" data-language="en" aria-pressed="false">EN</button>
+        </div>
       </header>
       <div class="home-layout">
 
@@ -135,6 +139,10 @@
       <div class="machine-switch" aria-label="Tipo de máquina">
         <button type="button" data-machine="mill" class="active"><span class="machine-icon">▦</span>Fresa</button>
         <button type="button" data-machine="lathe"><span class="machine-icon">◉</span>Torno</button>
+      </div>
+      <div class="language-switch app-language-switch" role="group" aria-label="Idioma">
+        <button type="button" data-language="es" aria-pressed="true">ES</button>
+        <button type="button" data-language="en" aria-pressed="false">EN</button>
       </div>
       <div class="quick-actions">
         <button class="icon-button" data-action="undo" title="Deshacer (Ctrl+Z)">↶</button>
@@ -361,6 +369,7 @@
   </dialog>
 
   <div id="toast" class="toast hidden"></div>
-  <script type="module" src="js/app.js?v=5.6.0"></script>
+  <script src="js/i18n.js?v=5.6.2"></script>
+  <script type="module" src="js/app.js?v=5.6.2"></script>
 </body>
 </html>

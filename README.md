@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/brand-full.png" alt="CNCVexa Simulator" width="300">
+<img src="docs/assets/brand-full.png" alt="CNCVexa Simulator" width="300">
 
 # CNCVexa Simulator
 
@@ -9,6 +9,8 @@
 Editor de código, macros, herramientas, ciclos de maquinado y simulación 2D/3D directamente desde el navegador.
 
 [**Abrir simulador**](https://cncvexa.com/) · [Reportar un problema](../../issues) · [Proponer una mejora](../../issues)
+
+**Español** · [English](README.en.md)
 
 </div>
 
@@ -292,13 +294,21 @@ M30
 
 ```text
 CNCVexa-Simulator/
-├── assets/
-├── js/
-├── samples/
-├── index.html
-├── styles.css
+├── docs/                 # Sitio publicado con GitHub Pages
+│   ├── assets/
+│   ├── js/
+│   ├── samples/
+│   ├── index.html
+│   ├── privacy.html
+│   ├── ads.txt
+│   ├── robots.txt
+│   ├── sitemap.xml
+│   ├── CNAME
+│   └── .nojekyll
 ├── README.md
-└── .nojekyll
+├── README.en.md
+├── LICENSE
+└── package.json
 ```
 
 ---

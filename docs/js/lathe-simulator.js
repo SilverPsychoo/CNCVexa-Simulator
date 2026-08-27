@@ -1,3 +1,4 @@
+const t=value=>globalThis.CNCVexaI18n?.translateString(String(value))??String(value);
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const TAU=Math.PI*2;
@@ -220,7 +221,7 @@ export class LatheSimulator{
     if(this.showTurret)this.drawTurret2D();
     this.drawTool2D();
     if(this.showCollisions)this.drawCollisions2D();
-    c.fillStyle='#1b3441';c.font='700 12px system-ui';c.fillText('Perfil X–Z · X programado en diámetro',18,24);c.font='10px system-ui';c.fillStyle='#5f7f8d';c.fillText('Z0 = cara frontal · el plato sujeta la barra en Z negativo',18,41);
+    c.fillStyle='#1b3441';c.font='700 12px system-ui';c.fillText(t('Perfil X–Z · X programado en diámetro'),18,24);c.font='10px system-ui';c.fillStyle='#5f7f8d';c.fillText(t('Z0 = cara frontal · el plato sujeta la barra en Z negativo'),18,41);
   }
 
   drawLatheBed2D(){

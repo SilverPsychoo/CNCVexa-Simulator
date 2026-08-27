@@ -1,3 +1,4 @@
+const t=value=>globalThis.CNCVexaI18n?.translateString(String(value))??String(value);
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const unionBounds=(a,b)=>({minX:Math.min(a.minX,b.minX),maxX:Math.max(a.maxX,b.maxX),minY:Math.min(a.minY,b.minY),maxY:Math.max(a.maxY,b.maxY),minZ:Math.min(a.minZ,b.minZ),maxZ:Math.max(a.maxZ,b.maxZ)});
 
@@ -430,7 +431,7 @@ export class StockSimulator{
     faces.sort((a,d)=>a.depth-d.depth);for(const face of faces)this.drawPoly(face.pts,face.color,face.stroke,0);
     this.drawRemovedBoundaries3D(stride,b,removedLimit);
     this.drawCutMarks3D();
-    const o=this.cfg.position,p=this.projection(o.x,o.y,b.maxZ+.3);c.fillStyle='#fff2a0';c.beginPath();c.arc(p.x,p.y,3.5,0,Math.PI*2);c.fill();c.font='700 9px system-ui';c.fillText('ORIGEN PIEZA',p.x+7,p.y-6);
+    const o=this.cfg.position,p=this.projection(o.x,o.y,b.maxZ+.3);c.fillStyle='#fff2a0';c.beginPath();c.arc(p.x,p.y,3.5,0,Math.PI*2);c.fill();c.font='700 9px system-ui';c.fillText(t('ORIGEN PIEZA'),p.x+7,p.y-6);
   }
 
   drawRemovedBoundaries3D(stride,b=this.stockBounds(),removedLimit=this.cfg.z-.1){
