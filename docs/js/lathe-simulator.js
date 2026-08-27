@@ -45,9 +45,9 @@ export class LatheSimulator{
   bindControls(){
     this.canvas.addEventListener('contextmenu',e=>{if(this.active)e.preventDefault();});
     this.canvas.addEventListener('pointerdown',e=>{
-      if(!this.active||this.viewMode==='2d')return;
+      if(!this.active)return;
       this.canvas.setPointerCapture(e.pointerId);
-      this.drag={x:e.clientX,y:e.clientY,mode:e.button===2||e.shiftKey?'pan':'rotate'};
+      this.drag={x:e.clientX,y:e.clientY,mode:this.viewMode==='2d'?'pan':(e.button===2||e.shiftKey?'pan':'rotate')};
       this.canvas.classList.add('dragging');
     });
     this.canvas.addEventListener('pointermove',e=>{

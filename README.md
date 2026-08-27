@@ -26,6 +26,7 @@ El proyecto comenzó como un simulador de fresadora y actualmente incluye dos mo
 - **Torno**, con barra cilíndrica, plato, torreta, perfil X–Z y modelo 3D por revolución.
 
 La aplicación funciona completamente en el navegador y puede utilizarse desde GitHub Pages.
+La interfaz también se adapta a teléfonos y tabletas, con navegación móvil entre editor, simulación y paneles, además de controles táctiles.
 
 > [!WARNING]
 > CNCVexa Simulator es una herramienta educativa. Antes de ejecutar un programa en una máquina real deben revisarse offsets, herramientas, sujeción, límites de carrera, compensaciones, *single block* y *dry run*.

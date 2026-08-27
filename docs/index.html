@@ -16,7 +16,7 @@
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.6.2">
+  <link rel="stylesheet" href="styles.css?v=5.7.2">
   <script type="application/ld+json">
   {
     "@context":"https://schema.org",
@@ -66,9 +66,10 @@
     </div>
   </section>
 
-  <div id="appRoot" class="app-root hidden">
+  <div id="appRoot" class="app-root hidden" data-mobile-view="editor">
     <header class="topbar">
       <button class="home-return-button" data-action="home" title="Volver al inicio" aria-label="Volver al inicio">⌂</button>
+      <button id="mobileMenuButton" class="mobile-menu-button" type="button" aria-label="Menú" aria-expanded="false" aria-controls="mobileActionMenu">☰</button>
       <div class="brand" title="CNCVexa Simulator">
         <img class="brand-logo" src="assets/logo.png" alt="Logo de CNCVexa Simulator">
         <div class="brand-copy"><strong>CNCVexa</strong><span>Simulador CNC</span></div>
@@ -152,6 +153,38 @@
       </div>
     </header>
 
+    <div id="mobileActionMenu" class="mobile-action-menu hidden" aria-hidden="true">
+      <button class="mobile-menu-backdrop" type="button" aria-label="Cerrar menú"></button>
+      <section class="mobile-action-sheet" role="dialog" aria-modal="true" aria-label="Menú">
+        <header><strong>Acciones</strong><button id="mobileMenuClose" type="button" aria-label="Cerrar menú">×</button></header>
+        <div class="mobile-action-groups">
+          <div class="mobile-action-group"><span>Archivo y proyecto</span>
+            <button data-action="newProgram">Nuevo programa</button>
+            <button data-action="openProgram">Abrir programa…</button>
+            <button data-action="saveProgram">Guardar programa .NC</button>
+            <button data-action="openProject">Abrir proyecto…</button>
+            <button data-action="saveProject">Guardar proyecto .CNCVEXA</button>
+          </div>
+          <div class="mobile-action-group"><span>Configuración</span>
+            <button data-action="stockSetup">Mesa, pieza y unidades…</button>
+            <button data-action="offsetSetup">Ceros de pieza G54–G59…</button>
+            <button data-action="toolSetup">Herramienta y correctores…</button>
+          </div>
+          <div class="mobile-action-group"><span>Simulación</span>
+            <button data-action="compile">Validar y compilar</button>
+            <button data-action="play">Ejecutar / continuar</button>
+            <button data-action="step">Bloque a bloque</button>
+            <button data-action="reset">Reiniciar simulación</button>
+          </div>
+          <div class="mobile-action-group"><span>Ayuda</span>
+            <button data-action="showCodes">Biblioteca de códigos</button>
+            <button data-action="shortcuts">Atajos y controles 3D</button>
+            <button data-action="about">Acerca de CNCVexa Simulator</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <main class="main-area">
       <section class="workbench" id="workbench">
         <article class="editor-panel panel" id="editorPanel">
@@ -162,10 +195,10 @@
               <button data-action="compile" class="primary-soft">Validar</button>
             </div>
           </header>
-          <div id="autocomplete" class="autocomplete hidden" role="listbox" aria-label="Sugerencias de autocompletado"></div>
           <div class="editor-shell" id="editorShell">
             <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
             <textarea id="codeEditor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Editor de programa CNC"></textarea>
+            <div id="autocomplete" class="autocomplete hidden" role="listbox" aria-label="Sugerencias de autocompletado"></div>
             <div id="dropOverlay" class="drop-overlay hidden">Suelta aquí tu archivo .NC, .TXT, .TAP o proyecto .CNCVEXA</div>
           </div>
           <footer class="editor-status">
@@ -192,6 +225,8 @@
             </div>
             <button class="toolbar-button" data-action="fitView" title="Encuadrar mesa y trayectoria (F)">Mesa</button>
             <button class="toolbar-button" data-action="fitStock" title="Enfocar solamente la pieza">Pieza</button>
+            <button class="toolbar-button mobile-zoom-button" type="button" data-mobile-zoom="out" title="Alejar">−</button>
+            <button class="toolbar-button mobile-zoom-button" type="button" data-mobile-zoom="in" title="Acercar">＋</button>
             <label class="toolbar-select small-hide">Calidad<select id="renderQuality"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="ultra">Ultra</option></select></label>
             <label class="mini-toggle"><input id="showRapids" type="checkbox" checked><span></span>Rápidos</label>
             <label class="mini-toggle"><input id="showCuts" type="checkbox" checked><span></span>Corte</label>
@@ -251,6 +286,12 @@
         <div id="tracePane" class="dock-pane"><pre id="traceLog">Sin ejecución.</pre></div>
       </section>
     </main>
+
+    <nav class="mobile-view-nav" aria-label="Vista móvil">
+      <button type="button" data-mobile-view="editor" class="active"><span class="mobile-view-icon">⌨</span><span>Código</span></button>
+      <button type="button" data-mobile-view="sim"><span class="mobile-view-icon">◈</span><span>Simulación</span></button>
+      <button type="button" data-mobile-view="dock"><span class="mobile-view-icon">☷</span><span>Panel</span></button>
+    </nav>
 
     <footer class="global-statusbar">
       <span id="statusMessage">Preparado</span>
@@ -369,7 +410,7 @@
   </dialog>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="js/i18n.js?v=5.6.2"></script>
-  <script type="module" src="js/app.js?v=5.6.2"></script>
+  <script src="js/i18n.js?v=5.7.2"></script>
+  <script type="module" src="js/app.js?v=5.7.2"></script>
 </body>
 </html>

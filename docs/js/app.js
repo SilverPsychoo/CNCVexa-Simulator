@@ -1,8 +1,8 @@
-import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=5.6.2';
-import {CNCInterpreter} from './interpreter.js?v=5.6.2';
-import {StockSimulator} from './simulator.js?v=5.6.2';
-import {LatheInterpreter} from './lathe-interpreter.js?v=5.6.2';
-import {LatheSimulator} from './lathe-simulator.js?v=5.6.2';
+import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=5.7.2';
+import {CNCInterpreter} from './interpreter.js?v=5.7.2';
+import {StockSimulator} from './simulator.js?v=5.7.2';
+import {LatheInterpreter} from './lathe-interpreter.js?v=5.7.2';
+import {LatheSimulator} from './lathe-simulator.js?v=5.7.2';
 
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
@@ -58,6 +58,12 @@ let currentFileName=defaultProgramName('mill'),dirty=false,selectedOffset='G54',
 const modeSessions={mill:{code:'',name:defaultProgramName('mill')},lathe:{code:'',name:defaultProgramName('lathe')}};
 const activeConfig=()=>machineType==='lathe'?latheConfig:config;
 const activeCodes=()=>machineType==='lathe'?LATHE_CODES:CODES;
+const comparable=value=>String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9#]/g,'');
+function tokenAtCursor(){
+  const before=editor.value.slice(0,editor.selectionStart);
+  const match=before.match(/([A-Z][A-Z0-9.]*|#\d*)$/i);
+  return match?match[1].toUpperCase():'';
+}
 
 const EXAMPLE=`O0020 (PROGRAMA PRINCIPAL)
 G17 G21 G90 G40 G49 G80
@@ -233,20 +239,27 @@ function renderDictionary(){
 }
 function showAutocomplete(force=false){
   const token=tokenAtCursor();if(!force&&token.length<1){hideAutocomplete();return;}
-  acMatches=activeCodes().filter(item=>{
-    const code=item.code.toUpperCase(),name=item.name.toUpperCase(),localizedName=t(item.name).toUpperCase();
-    return !token||code.startsWith(token)||comparable(code).startsWith(comparable(token))||name.startsWith(token)||localizedName.startsWith(token);
-  }).slice(0,10);
+  const source=activeCodes(),needle=comparable(token),direct=[],byName=[];
+  for(const item of source){
+    const code=item.code.toUpperCase(),name=comparable(item.name),localizedName=comparable(t(item.name)),codeKey=comparable(code);
+    if(!token||code.startsWith(token)||codeKey.startsWith(needle))direct.push(item);
+    else if(name.startsWith(needle)||localizedName.startsWith(needle))byName.push(item);
+  }
+  acMatches=[...direct,...byName].slice(0,10);
   if(!acMatches.length){hideAutocomplete();return;}
   activeAc=0;const box=$('#autocomplete'),shell=$('#editorShell');
   box.innerHTML=acMatches.map((item,index)=>`<div class="ac-item ${index===0?'active':''}" data-ac-index="${index}" role="option"><span class="ac-code">${escapeHtml(item.code)}</span><span class="ac-name">${escapeHtml(t(item.name))}</span><span class="support-pill ${item.support}">${t(SUPPORT_LABELS[item.support])}</span><span class="ac-detail">${escapeHtml(t(item.description))}</span></div>`).join('');
   box.scrollTop=0;box.classList.remove('hidden');
   const before=editor.value.slice(0,editor.selectionStart),row=before.split('\n').length-1,col=before.length-before.lastIndexOf('\n')-1,style=getComputedStyle(editor),lineHeight=parseFloat(style.lineHeight)||20.8,paddingTop=parseFloat(style.paddingTop)||12,paddingLeft=parseFloat(style.paddingLeft)||15;
-  const anchorY=paddingTop+row*lineHeight-editor.scrollTop,anchorX=48+paddingLeft+col*7.75-editor.scrollLeft;
-  const availableAbove=Math.max(58,anchorY-10),maxHeight=Math.min(250,availableAbove),boxHeight=Math.min(box.scrollHeight,maxHeight);
+  const probe=document.createElement('canvas').getContext('2d');probe.font=style.font;const charWidth=probe.measureText('M').width||7.75;
+  const anchorY=editor.offsetTop+paddingTop+row*lineHeight-editor.scrollTop,anchorX=editor.offsetLeft+paddingLeft+col*charWidth-editor.scrollLeft;
+  const belowTop=anchorY+lineHeight+6,spaceBelow=shell.clientHeight-belowTop-6,spaceAbove=anchorY-6,useBelow=spaceBelow>=110||spaceBelow>=spaceAbove;
+  const available=Math.max(64,useBelow?spaceBelow:spaceAbove),maxHeight=Math.min(250,available);
   box.style.maxHeight=`${maxHeight}px`;
-  box.style.top=`${Math.max(4,anchorY-boxHeight-8)}px`;
-  box.style.left=`${Math.max(52,Math.min(shell.clientWidth-box.offsetWidth-10,anchorX))}px`;
+  const boxHeight=Math.min(box.scrollHeight,maxHeight);
+  box.style.top=`${Math.max(4,useBelow?belowTop:anchorY-boxHeight-6)}px`;
+  const maxLeft=Math.max(editor.offsetLeft+4,shell.clientWidth-box.offsetWidth-8);
+  box.style.left=`${Math.max(editor.offsetLeft+4,Math.min(maxLeft,anchorX))}px`;
 }
 function hideAutocomplete(){$('#autocomplete').classList.add('hidden');}
 function acceptAutocomplete(item=acMatches[activeAc]){
@@ -301,6 +314,7 @@ function switchMachine(next,{saveCurrent=true,restoreSession=true,compile=true}=
   machineType=next;millSim.setActive(next==='mill');latheSim.setActive(next==='lathe');sim=next==='lathe'?latheSim:millSim;
   appRoot.classList.toggle('lathe-mode',next==='lathe');$$('.machine-switch button').forEach(button=>button.classList.toggle('active',button.dataset.machine===next));
   const setupButtons=$$('#setupMenu button span');if(setupButtons[0])setupButtons[0].textContent=t(next==='lathe'?'Barra, plato y unidades…':'Mesa, pieza y unidades…');if(setupButtons[1])setupButtons[1].textContent=t(next==='lathe'?'Ceros X/Z G54–G59…':'Ceros de pieza G54–G59…');if(setupButtons[2])setupButtons[2].textContent=t(next==='lathe'?'Torreta y correctores…':'Herramienta y correctores…');
+  const mobileStock=$('#mobileActionMenu [data-action="stockSetup"]'),mobileOffsets=$('#mobileActionMenu [data-action="offsetSetup"]'),mobileTools=$('#mobileActionMenu [data-action="toolSetup"]');if(mobileStock)mobileStock.textContent=t(next==='lathe'?'Barra, plato y unidades…':'Mesa, pieza y unidades…');if(mobileOffsets)mobileOffsets.textContent=t(next==='lathe'?'Ceros X/Z G54–G59…':'Ceros de pieza G54–G59…');if(mobileTools)mobileTools.textContent=t(next==='lathe'?'Torreta y correctores…':'Herramienta y correctores…');
   const tableLabel=$('#showTable')?.closest('label');if(tableLabel&&tableLabel.lastChild)tableLabel.lastChild.nodeValue=next==='lathe'?'Plato':'Mesa';
   $('#renderQuality').value=next==='lathe'?latheConfig.stock.renderQuality:config.workspace.renderQuality;$('#showTurret').checked=latheSim.showTurret;$('#stopOnCollision').checked=latheConfig.stock.safety?.stopOnCollision!==false;
   repopulateCategories();renderDictionary();
@@ -401,19 +415,26 @@ function showInfo(title,html){$('#infoDialogTitle').textContent=t(title);$('#inf
 function showShortcuts(){const en=window.CNCVexaI18n?.language==='en';showInfo('Atajos y controles',en?`<h3>Editing</h3><p><kbd>Ctrl+Z</kbd> undo, <kbd>Ctrl+Y</kbd> redo, <kbd>Ctrl+Space</kbd> autocomplete, <kbd>Ctrl+S</kbd> save NC, and <kbd>Alt+Shift+F</kbd> format.</p><h3>Simulation</h3><p><kbd>F5</kbd> run, <kbd>F7</kbd> validate, <kbd>F10</kbd> single block, <kbd>Ctrl+R</kbd> reset, and <kbd>Shift+F11</kbd> maximize.</p><h3>Views</h3><p>Use 3D to inspect machining and the tool. In 2D you will see the top view of the toolpath. In 3D, drag with the left mouse button to rotate; use Shift or the right mouse button to pan. The mouse wheel controls zoom and double-click fits the table.</p>`:`<h3>Edición</h3><p><kbd>Ctrl+Z</kbd> deshacer, <kbd>Ctrl+Y</kbd> rehacer, <kbd>Ctrl+Espacio</kbd> autocompletar, <kbd>Ctrl+S</kbd> guardar NC y <kbd>Alt+Shift+F</kbd> formatear.</p><h3>Simulación</h3><p><kbd>F5</kbd> ejecutar, <kbd>F7</kbd> validar, <kbd>F10</kbd> bloque a bloque, <kbd>Ctrl+R</kbd> reiniciar y <kbd>Shift+F11</kbd> maximizar.</p><h3>Vistas</h3><p>Usa 3D para revisar maquinado y herramienta. En 2D verás el trazo superior de la trayectoria. En 3D, arrastra con el botón izquierdo para rotar; usa Shift o el botón derecho para desplazar. La rueda controla el zoom y doble clic encuadra la mesa.</p>`);}
 function showAbout(){const en=window.CNCVexaI18n?.language==='en';showInfo('Acerca de CNCVexa Simulator',en?`<h3>CNC mill and lathe simulator</h3><p>CNCVexa integrates two independent simulation engines: an XYZ mill with a table and volumetric material removal, and an XZ lathe with stock, chuck, turret, and a revolved surface. .cncvexa projects automatically remember the machine type.</p><p>It does not replace dry run, single block, offset checks, travel-limit checks, tooling, workholding, or validation on the real controller.</p>`:`<h3>Simulador CNC de fresa y torno</h3><p>CNCVexa integra dos motores independientes: fresadora XYZ con mesa y remoción volumétrica, y torno XZ con barra, plato, torreta y superficie de revolución. Los proyectos .cncvexa recuerdan automáticamente el tipo de máquina.</p><p>No reemplaza el dry run, single block, comprobación de offsets, límites, herramienta, sujeción ni validación en el control real.</p>`);}
 
-function activateDock(name){$$('.dock-tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.dock===name));$$('.dock-pane').forEach(pane=>pane.classList.toggle('active',pane.id===`${name}Pane`));mainArea.classList.remove('dock-collapsed');}
-function toggleDock(){mainArea.classList.toggle('dock-collapsed');}
-function maximizeSimulation(){appRoot.classList.toggle('sim-maximized');setTimeout(()=>sim.resize(),50);}
+const isMobileViewport=()=>window.matchMedia?.('(max-width: 780px)').matches??false;
+function setMobileView(view='editor',{resize=true}={}){
+  const next=['editor','sim','dock'].includes(view)?view:'editor';appRoot.dataset.mobileView=next;$$('[data-mobile-view]').forEach(button=>button.classList.toggle('active',button.dataset.mobileView===next));
+  if(resize&&next==='sim')requestAnimationFrame(()=>sim.resize());
+}
+function openMobileMenu(){const menu=$('#mobileActionMenu'),button=$('#mobileMenuButton');if(!menu)return;menu.classList.remove('hidden');menu.setAttribute('aria-hidden','false');button?.setAttribute('aria-expanded','true');}
+function closeMobileMenu(){const menu=$('#mobileActionMenu'),button=$('#mobileMenuButton');if(!menu)return;menu.classList.add('hidden');menu.setAttribute('aria-hidden','true');button?.setAttribute('aria-expanded','false');}
+function activateDock(name){$$('.dock-tab').forEach(tab=>tab.classList.toggle('active',tab.dataset.dock===name));$$('.dock-pane').forEach(pane=>pane.classList.toggle('active',pane.id===`${name}Pane`));mainArea.classList.remove('dock-collapsed');if(isMobileViewport())setMobileView('dock',{resize:false});}
+function toggleDock(){if(isMobileViewport()){setMobileView(appRoot.dataset.mobileView==='dock'?'editor':'dock');return;}mainArea.classList.toggle('dock-collapsed');}
+function maximizeSimulation(){if(isMobileViewport()){setMobileView('sim');return;}appRoot.classList.toggle('sim-maximized');setTimeout(()=>sim.resize(),50);}
 function setView(name){if(machineType==='mill')sim.setView(sim.viewMode==='2d'?'top':name);else sim.fitView();}
 function setDisplayMode(mode='3d'){const next=mode==='2d'?'2d':'3d';sim.setDisplayMode(next);appRoot.classList.toggle('mode-2d',next==='2d');$$('.display-modes button').forEach(button=>button.classList.toggle('active',button.dataset.display===next));if(machineType==='mill'){if(next==='2d')sim.fitView('stock',false);else{sim.setView('iso');sim.fitView('scene',false);}}else sim.fitView(false);sim.resize();}
 
 let pendingHomeOpen=null;
 function showSimulator(){
-  $('#homeScreen').classList.add('hidden');appRoot.classList.remove('hidden');
+  $('#homeScreen').classList.add('hidden');appRoot.classList.remove('hidden');if(isMobileViewport())setMobileView('editor',{resize:false});
   requestAnimationFrame(()=>{sim.resize();if(machineType==='lathe')sim.fitView();else sim.fitView('scene');});
 }
 function showHome(){
-  stopPlayback();closeMenus();appRoot.classList.remove('sim-maximized');
+  stopPlayback();closeMenus();closeMobileMenu();appRoot.classList.remove('sim-maximized');
   appRoot.classList.add('hidden');$('#homeScreen').classList.remove('hidden');
   if(history.replaceState && location.search) history.replaceState(null,'',`${location.pathname}${location.hash||''}`);
 }
@@ -480,6 +501,11 @@ function runAction(name){closeMenus();actions[name]?.();}
 function closeMenus(){$$('.menu').forEach(menu=>menu.classList.remove('open'));}
 $$('.menu-trigger').forEach(trigger=>trigger.addEventListener('click',event=>{event.stopPropagation();const menu=trigger.closest('.menu'),wasOpen=menu.classList.contains('open');closeMenus();if(!wasOpen)menu.classList.add('open');}));
 document.addEventListener('click',event=>{if(!event.target.closest('.menu'))closeMenus();const action=event.target.closest('[data-action]')?.dataset.action;if(action)runAction(action);});
+$('#mobileMenuButton')?.addEventListener('click',event=>{event.stopPropagation();const menu=$('#mobileActionMenu');menu?.classList.contains('hidden')?openMobileMenu():closeMobileMenu();});
+$('#mobileMenuClose')?.addEventListener('click',closeMobileMenu);
+$('#mobileActionMenu')?.addEventListener('click',event=>{if(event.target.classList.contains('mobile-menu-backdrop')||event.target.closest('[data-action]'))closeMobileMenu();});
+$$('[data-mobile-view]').forEach(button=>button.addEventListener('click',()=>setMobileView(button.dataset.mobileView)));
+$$('[data-mobile-zoom]').forEach(button=>button.addEventListener('click',()=>{const factor=button.dataset.mobileZoom==='in'?1.22:1/1.22,min=machineType==='lathe'?.25:(sim.viewMode==='2d'?.35:.15),max=machineType==='lathe'?8:(sim.viewMode==='2d'?10:12);sim.camera.zoom=Math.max(min,Math.min(max,(sim.camera.zoom||1)*factor));sim.draw();}));
 $$('.machine-switch button').forEach(button=>button.addEventListener('click',()=>switchMachine(button.dataset.machine)));
 
 editor.addEventListener('input',()=>{if(!history.locked)scheduleHistory();afterEditorChange(true);});
@@ -587,13 +613,15 @@ document.addEventListener('cncvexa:languagechange',()=>{
   if(setupButtons[0]) setupButtons[0].textContent=t(machineType==='lathe'?'Barra, plato y unidades…':'Mesa, pieza y unidades…');
   if(setupButtons[1]) setupButtons[1].textContent=t(machineType==='lathe'?'Ceros X/Z G54–G59…':'Ceros de pieza G54–G59…');
   if(setupButtons[2]) setupButtons[2].textContent=t(machineType==='lathe'?'Torreta y correctores…':'Herramienta y correctores…');
+  const mobileStock=$('#mobileActionMenu [data-action="stockSetup"]'),mobileOffsets=$('#mobileActionMenu [data-action="offsetSetup"]'),mobileTools=$('#mobileActionMenu [data-action="toolSetup"]');
+  if(mobileStock)mobileStock.textContent=t(machineType==='lathe'?'Barra, plato y unidades…':'Mesa, pieza y unidades…');if(mobileOffsets)mobileOffsets.textContent=t(machineType==='lathe'?'Ceros X/Z G54–G59…':'Ceros de pieza G54–G59…');if(mobileTools)mobileTools.textContent=t(machineType==='lathe'?'Torreta y correctores…':'Herramienta y correctores…');
   repopulateCategories();renderDictionary();renderVariables();renderDiagnostics();updateSummaries();
   if($('#toolName')?.dataset.i18nSource) localizedInput('#toolName',$('#toolName').dataset.i18nSource);
   if($('#latheToolName')?.dataset.i18nSource) localizedInput('#latheToolName',$('#latheToolName').dataset.i18nSource);
   renderToolSlots();renderLatheToolSlots();updateToolPreview();updateLatheToolPreview();updateLatheGripInfo();updatePiecePositionInfo();
   sim.draw();
 });
-window.addEventListener('resize',()=>sim.resize());
+window.addEventListener('resize',()=>{if(!isMobileViewport())closeMobileMenu();sim.resize();});
 window.addEventListener('beforeunload',event=>{saveLocal(false);if(dirty){event.preventDefault();event.returnValue='';}});
 
 repopulateCategories();editor.value='';resetHistory('');updateEditorChrome();syncWorkspaceConfig(DEFAULT_WORKSPACE);setStockForm(config.workspace);loadToolFields();applyStock({compile:false,close:false,notify:false});millSim.setCurrentTool(config.tools[3]);latheSim.configure(latheConfig.stock);latheSim.setCurrentTool(latheConfig.tools[1]);renderDictionary();compileProgram({silent:true});setDirty(false);setDisplayMode('3d');setView('iso');updateSummaries();setStatus('Preparado');if(!handleExternalLaunch())showHome();
