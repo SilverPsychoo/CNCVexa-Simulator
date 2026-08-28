@@ -4,11 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#09131d">
-  <title>CNCVexa Simulator | Simulador CNC Online de Fresa y Torno</title>
+  <meta name="application-name" content="CNCVexa">
+  <meta name="apple-mobile-web-app-title" content="CNCVexa">
+  <title>CNCVexa | Simulador CNC Online de Fresa y Torno</title>
   <meta name="description" content="CNCVexa Simulator es un simulador CNC online para fresadora y torno. Escribe, prueba y visualiza código G con herramientas, offsets, ciclos y simulación 2D/3D desde el navegador.">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="https://cncvexa.com/">
-  <meta property="og:title" content="CNCVexa Simulator — Simulador CNC">
+  <meta property="og:site_name" content="CNCVexa">
+  <meta property="og:title" content="CNCVexa — Simulador CNC Online">
   <meta property="og:description" content="Simulador CNC educativo para fresadora y torno directamente desde el navegador.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://cncvexa.com/">
@@ -17,15 +20,32 @@
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="site.webmanifest">
   <link rel="stylesheet" href="styles.css?v=5.7.3">
-  <script type="application/ld+json">
+  <script id="websiteSchema" type="application/ld+json">
   {
-    "@context":"https://schema.org",
-    "@type":"SoftwareApplication",
-    "name":"CNCVexa Simulator",
-    "applicationCategory":"EducationalApplication",
-    "operatingSystem":"Web",
-    "description":"Simulador CNC educativo para fresadora y torno con editor de código y visualización 2D/3D.",
-    "url":"https://cncvexa.com/"
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "CNCVexa",
+    "alternateName": [
+      "CNCVexa Simulator",
+      "cncvexa.com"
+    ],
+    "url": "https://cncvexa.com/"
+  }
+  </script>
+  <script id="softwareApplicationSchema" type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "CNCVexa Simulator",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "description": "Simulador CNC educativo para fresadora y torno con editor de código y visualización 2D/3D.",
+    "url": "https://cncvexa.com/",
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "CNCVexa",
+      "url": "https://cncvexa.com/"
+    }
   }
   </script>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5884657751399644"
@@ -37,7 +57,7 @@
       <header class="home-hero">
         <img class="home-brand-image" src="assets/brand-full.png" alt="CNCVexa Simulator">
         <h1>CNCVexa Simulator</h1>
-        <p>Simulador CNC educativo para crear, abrir y probar programas de fresadora y torno directamente desde el navegador.</p>
+        <p>CNCVexa es un simulador CNC educativo para crear, abrir y probar programas de fresadora y torno directamente desde el navegador.</p>
         <div class="language-switch home-language-switch" role="group" aria-label="Idioma">
           <button type="button" data-language="es" aria-pressed="true">ES</button>
           <button type="button" data-language="en" aria-pressed="false">EN</button>
@@ -65,7 +85,7 @@
             <button class="home-action-card" data-home-action="project" data-home-machine="lathe"><span class="home-action-icon">◇</span><span><strong>Abrir proyecto torno</strong><small>Recupera barra, torreta, herramientas, offsets y vista.</small></span></button>
           </div>
           <div class="home-seo-copy">
-            <strong>Simulador CNC online para fresa y torno</strong>
+            <strong>CNCVexa: simulador CNC online para fresa y torno</strong>
             <p>Crea y prueba programas de código G, configura herramientas y offsets, y revisa trayectorias y maquinado con simulación 2D/3D directamente desde el navegador.</p>
             <div class="home-seo-tags"><span>Fresadora</span><span>Torno</span><span>Código G</span><span>Simulación 2D/3D</span></div>
           </div>

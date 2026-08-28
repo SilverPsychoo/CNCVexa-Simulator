@@ -5,8 +5,8 @@
   const SUPPORTED = new Set(['es', 'en']);
 
   const EN = {
-    'CNCVexa Simulator | Simulador CNC Online de Fresa y Torno': 'CNCVexa Simulator | Online CNC Mill and Lathe Simulator',
-    'Simulador CNC educativo para crear, abrir y probar programas de fresadora y torno directamente desde el navegador.': 'Educational CNC simulator to create, open and test milling and lathe programs directly in your browser.',
+    'CNCVexa | Simulador CNC Online de Fresa y Torno': 'CNCVexa | Online CNC Mill and Lathe Simulator',
+    'CNCVexa es un simulador CNC educativo para crear, abrir y probar programas de fresadora y torno directamente desde el navegador.': 'CNCVexa is an educational CNC simulator to create, open and test milling and lathe programs directly in your browser.',
     'PROYECTOS': 'PROJECTS',
     '¿Qué quieres hacer?': 'What do you want to do?',
     'Nuevo proyecto de fresa': 'New milling project',
@@ -21,7 +21,7 @@
     'Recupera código, pieza, herramientas, offsets y vista.': 'Restore code, workpiece, tools, offsets and view.',
     'Abrir proyecto torno': 'Open lathe project',
     'Recupera barra, torreta, herramientas, offsets y vista.': 'Restore stock, turret, tools, offsets and view.',
-    'Simulador CNC online para fresa y torno': 'Online CNC simulator for milling and turning',
+    'CNCVexa: simulador CNC online para fresa y torno': 'CNCVexa: online CNC simulator for milling and turning',
     'Crea y prueba programas de código G, configura herramientas y offsets, y revisa trayectorias y maquinado con simulación 2D/3D directamente desde el navegador.': 'Create and test G-code programs, configure tools and offsets, and review toolpaths and machining with 2D/3D simulation directly in your browser.',
     'Fresadora': 'Milling',
     'Fresa': 'Mill',
@@ -1233,14 +1233,14 @@
       document.title = language === 'en' ? 'Privacy Policy | CNCVexa Simulator' : 'Política de privacidad | CNCVexa Simulator';
       if (desc) desc.content = language === 'en' ? 'CNCVexa Simulator privacy policy.' : 'Política de privacidad de CNCVexa Simulator.';
     } else {
-      document.title = language === 'en' ? 'CNCVexa Simulator | Online CNC Mill and Lathe Simulator' : 'CNCVexa Simulator | Simulador CNC Online de Fresa y Torno';
+      document.title = language === 'en' ? 'CNCVexa | Online CNC Mill and Lathe Simulator' : 'CNCVexa | Simulador CNC Online de Fresa y Torno';
       const description = language === 'en'
         ? 'Free online CNC simulator for milling and turning. Write, test and visualize G-code with 2D and 3D simulation directly in your browser.'
         : 'CNCVexa Simulator es un simulador CNC online gratuito para fresadora y torno. Escribe, prueba y visualiza código G con simulación CNC 2D y 3D desde el navegador.';
       if (desc) desc.content = description;
-      if (ogTitle) ogTitle.content = language === 'en' ? 'CNCVexa Simulator — Online CNC Simulator' : 'CNCVexa Simulator — Simulador CNC';
+      if (ogTitle) ogTitle.content = language === 'en' ? 'CNCVexa — Online CNC Simulator' : 'CNCVexa — Simulador CNC Online';
       if (ogDesc) ogDesc.content = language === 'en' ? 'Educational CNC simulator for milling and turning directly in your browser.' : 'Simulador CNC educativo para fresadora y torno directamente desde el navegador.';
-      const ld = document.querySelector('script[type="application/ld+json"]');
+      const ld = document.getElementById('softwareApplicationSchema');
       if (ld) {
         try {
           const data = JSON.parse(ld.textContent);
