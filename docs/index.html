@@ -20,6 +20,10 @@
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="site.webmanifest">
   <link rel="stylesheet" href="styles.css?v=5.7.3">
+  <!-- Sin anuncios manuales en Inicio. Se conserva el script global de AdSense para verificación y futuros Auto Ads. -->
+  <style>
+    .home-layout{grid-template-columns:minmax(0,900px)!important;justify-content:center}
+  </style>
   <script id="websiteSchema" type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -64,16 +68,6 @@
         </div>
       </header>
       <div class="home-layout">
-        <aside class="home-ad-rail home-ad-rail-left" aria-label="Publicidad">
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-5884657751399644"
-               data-ad-slot="8881987984"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-          <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-        </aside>
-
         <section class="home-projects" aria-label="Crear o abrir proyectos CNC">
           <div class="home-section-heading"><span>PROYECTOS</span><h2>¿Qué quieres hacer?</h2></div>
           <div class="home-action-grid">
@@ -91,15 +85,6 @@
           </div>
         </section>
 
-        <aside class="home-ad-rail home-ad-rail-right" aria-label="Publicidad">
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-5884657751399644"
-               data-ad-slot="8881987984"
-               data-ad-format="auto"
-               data-full-width-responsive="true"></ins>
-          <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-        </aside>
       </div>
       <footer class="home-footer"><span>CNCVexa Simulator v5.7.3</span><span>Fresa · Torno · Código CNC · Simulación 2D/3D · <a href="privacy.html">Privacidad</a></span></footer>
     </div>
