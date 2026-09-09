@@ -295,6 +295,8 @@ M30
 
 ```text
 CNCVexa-Simulator/
+├── .github/
+│   └── FUNDING.yml       # Enlace de apoyo en GitHub
 ├── docs/                 # Sitio publicado con GitHub Pages
 │   ├── assets/
 │   ├── js/
@@ -331,6 +333,18 @@ Para reportar un error:
 3. Indica si ocurrió en Fresa o Torno.
 4. Explica el resultado esperado y lo que mostró el simulador.
 5. Agrega una captura cuando sea posible.
+
+---
+
+## ☕ Apoya el proyecto
+
+CNCVexa Simulator es gratuito y seguirá disponible para la comunidad.
+
+Si disfrutas CNCVexa o simplemente te gusta lo que estoy construyendo, puedes apoyar mi trabajo en Ko-fi. Tu apoyo me ayuda a seguir desarrollando nuevas funciones, mejorando la simulación y manteniendo el proyecto.
+
+**[☕ Apoyarme en Ko-fi](https://ko-fi.com/silverpsycho)**
+
+Usar, compartir y reportar problemas ya es una gran forma de apoyar el proyecto. 💙
 
 ---
 

@@ -294,6 +294,8 @@ M30
 
 ```text
 CNCVexa-Simulator/
+├── .github/
+│   └── FUNDING.yml       # GitHub support link
 ├── assets/
 ├── js/
 ├── samples/
@@ -323,6 +325,18 @@ To report an issue:
 3. Indicate whether it occurred in Mill or Lathe mode.
 4. Explain the expected result and what the simulator displayed.
 5. Add a screenshot whenever possible.
+
+---
+
+## ☕ Support the project
+
+CNCVexa Simulator is free and will remain available to the community.
+
+If you enjoy CNCVexa or simply like what I’m building, you can support my work on Ko-fi. Your support helps me keep developing new features, improving the simulation, and maintaining the project.
+
+**[☕ Support me on Ko-fi](https://ko-fi.com/silverpsycho)**
+
+Using, sharing, and reporting issues is already a great way to support the project. 💙
 
 ---
 

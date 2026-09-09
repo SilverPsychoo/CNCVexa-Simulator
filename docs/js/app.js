@@ -494,7 +494,7 @@ const actions={
   stockSetup:openStockDialog,offsetSetup:openOffsetDialog,toolSetup:openToolDialog,
   compile:()=>compileProgram(),play:playProgram,step:()=>{if(runIndex<0)compileProgram({silent:true});stepProgram();},pause:()=>{stopPlayback();setStatus('Simulación pausada');},reset:resetSimulation,
   fitView:()=>machineType==='lathe'?sim.fitView():sim.fitView('scene'),fitStock:()=>machineType==='lathe'?sim.fitView():sim.fitView('stock'),toggleDock,maximizeSimulation,
-  showCodes:()=>activateDock('codes'),shortcuts:showShortcuts,about:showAbout,home:showHome
+  showCodes:()=>activateDock('codes'),shortcuts:showShortcuts,about:showAbout,supportProject:()=>window.open('https://ko-fi.com/silverpsycho','_blank','noopener,noreferrer'),home:showHome
 };
 function runAction(name){closeMenus();actions[name]?.();}
 

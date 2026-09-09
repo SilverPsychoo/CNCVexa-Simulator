@@ -74,6 +74,7 @@
     'Biblioteca de códigos': 'Code library',
     'Atajos y controles 3D': 'Shortcuts and 3D controls',
     'Acerca de CNCVexa Simulator': 'About CNCVexa Simulator',
+    '☕ Apoyar CNCVexa': '☕ Support CNCVexa',
     '✓ Validar': '✓ Validate',
     '▶ Ejecutar': '▶ Run',
     'Formatear': 'Format',
