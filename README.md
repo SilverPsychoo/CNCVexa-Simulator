@@ -303,7 +303,6 @@ CNCVexa-Simulator/
 │   ├── samples/
 │   ├── index.html
 │   ├── privacy.html
-│   ├── ads.txt
 │   ├── robots.txt
 │   ├── sitemap.xml
 │   ├── CNAME

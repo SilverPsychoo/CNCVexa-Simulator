@@ -20,7 +20,6 @@
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="site.webmanifest">
   <link rel="stylesheet" href="styles.css?v=5.7.3">
-  <!-- Sin anuncios manuales en Inicio. Se conserva el script global de AdSense para verificación y futuros Auto Ads. -->
   <style>
     .home-layout{grid-template-columns:minmax(0,900px)!important;justify-content:center}
   </style>
@@ -52,8 +51,6 @@
     }
   }
   </script>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5884657751399644"
-     crossorigin="anonymous"></script>
 </head>
 <body>
   <section id="homeScreen" class="home-screen" aria-label="Inicio de CNCVexa Simulator">
@@ -78,6 +75,31 @@
             <button class="home-action-card" data-home-action="project" data-home-machine="mill"><span class="home-action-icon">◇</span><span><strong>Abrir proyecto fresa</strong><small>Recupera código, pieza, herramientas, offsets y vista.</small></span></button>
             <button class="home-action-card" data-home-action="project" data-home-machine="lathe"><span class="home-action-icon">◇</span><span><strong>Abrir proyecto torno</strong><small>Recupera barra, torreta, herramientas, offsets y vista.</small></span></button>
           </div>
+
+          <div class="home-adsterra-banner" aria-label="Publicidad">
+            <script>
+              if (window.matchMedia('(max-width: 760px)').matches) {
+                window.atOptions = {
+                  'key' : '703ae6bc35936be297e0aaf552152c3c',
+                  'format' : 'iframe',
+                  'height' : 50,
+                  'width' : 320,
+                  'params' : {}
+                };
+                document.write('<script src="https://www.highrevenueformat.com/703ae6bc35936be297e0aaf552152c3c/invoke.js"><\/script>');
+              } else {
+                window.atOptions = {
+                  'key' : 'a1e3d55a4bdecb2fc23e24aa6fd995c2',
+                  'format' : 'iframe',
+                  'height' : 90,
+                  'width' : 728,
+                  'params' : {}
+                };
+                document.write('<script src="https://www.highrevenueformat.com/a1e3d55a4bdecb2fc23e24aa6fd995c2/invoke.js"><\/script>');
+              }
+            </script>
+          </div>
+
           <div class="home-seo-copy">
             <strong>CNCVexa: simulador CNC online para fresa y torno</strong>
             <p>Crea y prueba programas de código G, configura herramientas y offsets, y revisa trayectorias y maquinado con simulación 2D/3D directamente desde el navegador.</p>
