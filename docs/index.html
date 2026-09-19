@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#09131d">
+  <meta name="theme-color" content="#0a0f12">
   <meta name="application-name" content="CNCVexa">
   <meta name="apple-mobile-web-app-title" content="CNCVexa">
   <title>CNCVexa | Simulador CNC Online de Fresa y Torno</title>
@@ -19,10 +19,7 @@
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.7.3">
-  <style>
-    .home-layout{grid-template-columns:minmax(0,900px)!important;justify-content:center}
-  </style>
+  <link rel="stylesheet" href="styles.css?v=6.0.2">
   <script id="websiteSchema" type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -55,58 +52,70 @@
 <body>
   <section id="homeScreen" class="home-screen" aria-label="Inicio de CNCVexa Simulator">
     <div class="home-shell">
-      <header class="home-hero">
-        <img class="home-brand-image" src="assets/brand-full.png" alt="CNCVexa Simulator">
-        <h1>CNCVexa Simulator</h1>
-        <p>CNCVexa es un simulador CNC educativo para crear, abrir y probar programas de fresadora y torno directamente desde el navegador.</p>
-        <div class="language-switch home-language-switch" role="group" aria-label="Idioma">
-          <button type="button" data-language="es" aria-pressed="true">ES</button>
-          <button type="button" data-language="en" aria-pressed="false">EN</button>
+      <header class="home-topbar">
+        <div class="home-identity">
+          <img src="assets/logo.png" alt="" aria-hidden="true">
+          <div><strong>CNCVexa</strong><span>SIMULATOR / 6.0.0</span></div>
+        </div>
+        <div class="home-topbar-tools">
+          <div class="language-switch home-language-switch" role="group" aria-label="Idioma">
+            <button type="button" data-language="es" aria-pressed="true">ES</button>
+            <button type="button" data-language="en" aria-pressed="false">EN</button>
+          </div>
         </div>
       </header>
-      <div class="home-layout">
-        <section class="home-projects" aria-label="Crear o abrir proyectos CNC">
-          <div class="home-section-heading"><span>PROYECTOS</span><h2>¿Qué quieres hacer?</h2></div>
-          <div class="home-action-grid">
-            <button class="home-action-card" data-home-action="new" data-home-machine="mill"><span class="home-action-icon">▦</span><span><strong>Nuevo proyecto de fresa</strong><small>Comienza un programa CNC de fresadora desde cero.</small></span></button>
-            <button class="home-action-card" data-home-action="new" data-home-machine="lathe"><span class="home-action-icon">◉</span><span><strong>Nuevo proyecto de torno</strong><small>Comienza un programa CNC de torno desde cero.</small></span></button>
-            <button class="home-action-card" data-home-action="program" data-home-machine="mill"><span class="home-action-icon">↥</span><span><strong>Abrir código fresa</strong><small>Importa un archivo .NC, .TAP, .TXT, .CNC o .GCODE.</small></span></button>
-            <button class="home-action-card" data-home-action="program" data-home-machine="lathe"><span class="home-action-icon">↥</span><span><strong>Abrir código torno</strong><small>Importa código existente y ábrelo directamente en torno.</small></span></button>
-            <button class="home-action-card" data-home-action="project" data-home-machine="mill"><span class="home-action-icon">◇</span><span><strong>Abrir proyecto fresa</strong><small>Recupera código, pieza, herramientas, offsets y vista.</small></span></button>
-            <button class="home-action-card" data-home-action="project" data-home-machine="lathe"><span class="home-action-icon">◇</span><span><strong>Abrir proyecto torno</strong><small>Recupera barra, torreta, herramientas, offsets y vista.</small></span></button>
-          </div>
+      <main class="home-main">
+        <div class="home-heading">
+          <span class="home-eyebrow">CNCVEXA / SIMULADOR CNC</span>
+          <h1>Seleccionar máquina</h1>
+        </div>
 
-          <div class="home-adsterra-banner" aria-label="Publicidad">
-            <script>
-              if (window.matchMedia('(min-width: 761px)').matches) {
-                window.atOptions = {
-                  'key' : 'a1e3d55a4bdecb2fc23e24aa6fd995c2',
-                  'format' : 'iframe',
-                  'height' : 90,
-                  'width' : 728,
-                  'params' : {}
-                };
-                document.write('<script src="https://www.highrevenueformat.com/a1e3d55a4bdecb2fc23e24aa6fd995c2/invoke.js"><\/script>');
-              }
-            </script>
-          </div>
+        <section class="home-machine-grid" aria-label="Crear o abrir proyectos CNC">
+          <article class="home-machine-module mill-module">
+            <header class="home-machine-header">
+              <div class="home-machine-visual" aria-hidden="true">
+                <svg viewBox="0 0 120 84" role="img">
+                  <path d="M18 69h84M25 60h70v9H25zM39 49h42v11H39zM53 11h14v30H53zM47 7h26v9H47zM58 41v8"/>
+                  <path class="axis" d="M92 19v23M80 30h24M92 19l-4 6M92 19l4 6M104 30l-6-4M104 30l-6 4"/>
+                </svg>
+              </div>
+              <div class="home-machine-copy"><span>3 EJES / PLANO G17</span><h2>Fresadora</h2><p>XYZ&nbsp;&nbsp; G54–G59&nbsp;&nbsp; mm / in</p></div>
+            </header>
+            <div class="home-machine-actions">
+              <button class="home-action-main" data-home-action="new" data-home-machine="mill"><span><strong>Nuevo programa</strong><small>Fresadora</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button>
+              <button class="home-action-row" data-home-action="program" data-home-machine="mill"><span><strong>Abrir código</strong><small>.NC  .TAP  .GCODE</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5zM12 3v4h3M8 11h4M8 14h4"/></svg></button>
+              <button class="home-action-row" data-home-action="project" data-home-machine="mill"><span><strong>Abrir proyecto</strong><small>.CNCVEXA</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h6l2 2h6v8H3zM3 6V4h5l2 2"/></svg></button>
+            </div>
+          </article>
 
-          <div class="home-seo-copy">
-            <strong>CNCVexa: simulador CNC online para fresa y torno</strong>
-            <p>Crea y prueba programas de código G, configura herramientas y offsets, y revisa trayectorias y maquinado con simulación 2D/3D directamente desde el navegador.</p>
-            <div class="home-seo-tags"><span>Fresadora</span><span>Torno</span><span>Código G</span><span>Simulación 2D/3D</span></div>
-          </div>
+          <article class="home-machine-module lathe-module">
+            <header class="home-machine-header">
+              <div class="home-machine-visual" aria-hidden="true">
+                <svg viewBox="0 0 120 84" role="img">
+                  <path d="M17 23h15v39H17zM32 29h12v27H32zM44 34h47v17H44zM91 38h13v9H91zM12 68h96"/>
+                  <path d="M24 29v27M17 35h15M17 50h15M72 20l9 9-8 8-9-9zM73 37l-9 13"/>
+                  <path class="axis" d="M89 18v16M80 26h20M89 18l-4 5M89 18l4 5M100 26l-6-4M100 26l-6 4"/>
+                </svg>
+              </div>
+              <div class="home-machine-copy"><span>2 EJES / PLANO G18</span><h2>Torno</h2><p>XZ&nbsp;&nbsp; X en diámetro&nbsp;&nbsp; mm / in</p></div>
+            </header>
+            <div class="home-machine-actions">
+              <button class="home-action-main" data-home-action="new" data-home-machine="lathe"><span><strong>Nuevo programa</strong><small>Torno</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button>
+              <button class="home-action-row" data-home-action="program" data-home-machine="lathe"><span><strong>Abrir código</strong><small>.NC  .TAP  .GCODE</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5zM12 3v4h3M8 11h4M8 14h4"/></svg></button>
+              <button class="home-action-row" data-home-action="project" data-home-machine="lathe"><span><strong>Abrir proyecto</strong><small>.CNCVEXA</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h6l2 2h6v8H3zM3 6V4h5l2 2"/></svg></button>
+            </div>
+          </article>
         </section>
 
-      </div>
-      <footer class="home-footer"><span>CNCVexa Simulator v5.7.3</span><span>Fresa · Torno · Código CNC · Simulación 2D/3D · <a href="privacy.html">Privacidad</a> · <a href="https://ko-fi.com/silverpsycho" target="_blank" rel="noopener noreferrer">☕ Apoyar CNCVexa</a></span></footer>
+      </main>
+      <footer class="home-footer"><span>CNCVexa Simulator</span><nav><a href="privacy.html">Privacidad</a><a href="https://ko-fi.com/silverpsycho" target="_blank" rel="noopener noreferrer">Apoyar el proyecto</a></nav></footer>
     </div>
   </section>
 
   <div id="appRoot" class="app-root hidden" data-mobile-view="editor">
     <header class="topbar">
-      <button class="home-return-button" data-action="home" title="Volver al inicio" aria-label="Volver al inicio">⌂</button>
-      <button id="mobileMenuButton" class="mobile-menu-button" type="button" aria-label="Menú" aria-expanded="false" aria-controls="mobileActionMenu">☰</button>
+      <button class="home-return-button" data-action="home" title="Volver al inicio" aria-label="Volver al inicio"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 9.5 10 3l7 6.5M5.5 8v8.5h9V8M8 16.5v-5h4v5"/></svg></button>
+      <button id="mobileMenuButton" class="mobile-menu-button" type="button" aria-label="Menú" aria-expanded="false" aria-controls="mobileActionMenu"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
       <div class="brand" title="CNCVexa Simulator">
         <img class="brand-logo" src="assets/logo.png" alt="Logo de CNCVexa Simulator">
         <div class="brand-copy"><strong>CNCVexa</strong><span>Simulador CNC</span></div>
@@ -148,10 +157,8 @@
         <div class="menu">
           <button class="menu-trigger" data-menu="simulationMenu">Simulación</button>
           <div id="simulationMenu" class="menu-popover">
-            <button data-action="compile"><span>Validar y compilar</span><kbd>F7</kbd></button>
             <button data-action="play"><span>Ejecutar / continuar</span><kbd>F5</kbd></button>
             <button data-action="step"><span>Bloque a bloque</span><kbd>F10</kbd></button>
-            <button data-action="pause"><span>Pausar</span></button>
             <button data-action="reset"><span>Reiniciar simulación</span><kbd>Ctrl+R</kbd></button>
           </div>
         </div>
@@ -171,24 +178,23 @@
             <button data-action="shortcuts"><span>Atajos y controles 3D</span></button>
             <button data-action="about"><span>Acerca de CNCVexa Simulator</span></button>
             <div class="menu-separator"></div>
-            <button data-action="supportProject"><span>☕ Apoyar CNCVexa</span></button>
+            <button data-action="supportProject"><span>Apoyar CNCVexa</span></button>
           </div>
         </div>
       </nav>
 
       <div class="machine-switch" aria-label="Tipo de máquina">
-        <button type="button" data-machine="mill" class="active"><span class="machine-icon">▦</span>Fresa</button>
-        <button type="button" data-machine="lathe"><span class="machine-icon">◉</span>Torno</button>
+        <button type="button" data-machine="mill" class="active"><svg class="machine-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16h12M6 13h8v3H6zM9 4h2v7H9zM7 3h6v2H7z"/></svg>Fresa</button>
+        <button type="button" data-machine="lathe"><svg class="machine-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h3v8H3zM6 7h2v6H6zM8 8h8v4H8zM16 9h2v2h-2z"/></svg>Torno</button>
       </div>
       <div class="language-switch app-language-switch" role="group" aria-label="Idioma">
         <button type="button" data-language="es" aria-pressed="true">ES</button>
         <button type="button" data-language="en" aria-pressed="false">EN</button>
       </div>
       <div class="quick-actions">
-        <button class="icon-button" data-action="undo" title="Deshacer (Ctrl+Z)">↶</button>
-        <button class="icon-button" data-action="redo" title="Rehacer (Ctrl+Y)">↷</button>
-        <button class="validate-button" data-action="compile">✓ Validar</button>
-        <button class="run-button" data-action="play">▶ Ejecutar</button>
+        <button class="icon-button" data-action="undo" title="Deshacer (Ctrl+Z)"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m8 5-4 4 4 4M4 9h7c3 0 5 2 5 5"/></svg></button>
+        <button class="icon-button" data-action="redo" title="Rehacer (Ctrl+Y)"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m12 5 4 4-4 4M16 9H9c-3 0-5 2-5 5"/></svg></button>
+        <button class="run-button" data-action="play"><svg class="ui-icon icon-fill" data-run-icon viewBox="0 0 20 20" aria-hidden="true"><path d="m6 4 10 6-10 6z"/></svg><span data-run-label>Ejecutar</span></button>
       </div>
     </header>
 
@@ -210,7 +216,6 @@
             <button data-action="toolSetup">Herramienta y correctores…</button>
           </div>
           <div class="mobile-action-group"><span>Simulación</span>
-            <button data-action="compile">Validar y compilar</button>
             <button data-action="play">Ejecutar / continuar</button>
             <button data-action="step">Bloque a bloque</button>
             <button data-action="reset">Reiniciar simulación</button>
@@ -219,24 +224,24 @@
             <button data-action="showCodes">Biblioteca de códigos</button>
             <button data-action="shortcuts">Atajos y controles 3D</button>
             <button data-action="about">Acerca de CNCVexa Simulator</button>
-            <button data-action="supportProject">☕ Apoyar CNCVexa</button>
+            <button data-action="supportProject">Apoyar CNCVexa</button>
           </div>
         </div>
       </section>
     </div>
 
-    <main class="main-area">
+    <main class="main-area dock-collapsed">
       <section class="workbench" id="workbench">
         <article class="editor-panel panel" id="editorPanel">
           <header class="panel-titlebar">
             <div class="document-title"><span class="file-dot"></span><strong id="programName" class="editable-filename" tabindex="0" title="Haz clic para cambiar el nombre del archivo">programa_cnc.nc</strong><span id="dirtyMark" class="dirty-mark hidden">●</span></div>
             <div class="panel-tools">
               <button data-action="format" title="Formatear">Formatear</button>
-              <button data-action="compile" class="primary-soft">Validar</button>
             </div>
           </header>
           <div class="editor-shell" id="editorShell">
             <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
+            <pre id="codeHighlight" class="code-highlight" aria-hidden="true"><code></code></pre>
             <textarea id="codeEditor" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Editor de programa CNC"></textarea>
             <div id="autocomplete" class="autocomplete hidden" role="listbox" aria-label="Sugerencias de autocompletado"></div>
             <div id="dropOverlay" class="drop-overlay hidden">Suelta aquí tu archivo .NC, .TXT, .TAP o proyecto .CNCVEXA</div>
@@ -245,7 +250,7 @@
             <span id="cursorStatus">Ln 1, Col 1</span>
             <span id="selectionStatus">Sin selección</span>
             <span>UTF-8</span>
-            <span id="parseStatus" class="status-ok">Listo</span>
+            <span id="parseStatus">Sin validar</span>
           </footer>
         </article>
 
@@ -254,10 +259,9 @@
         <article class="sim-panel panel" id="simPanel">
           <header class="sim-toolbar">
             <div class="transport compact-transport">
-              <button data-action="reset" title="Reiniciar">↺</button>
-              <button data-action="step" title="Bloque a bloque (F10)">▮▶</button>
-              <button data-action="play" class="play-compact" title="Ejecutar (F5)">▶</button>
-              <button data-action="pause" title="Pausar">Ⅱ</button>
+              <button data-action="reset" title="Reiniciar"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6V2M5 6h4M5.2 5.8A7 7 0 1 1 3 11"/></svg></button>
+              <button data-action="step" title="Bloque a bloque (F10)"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4v12M8 4l8 6-8 6z"/></svg></button>
+              <button data-action="play" class="play-compact" title="Ejecutar (F5)"><svg class="ui-icon icon-fill" data-run-icon viewBox="0 0 20 20" aria-hidden="true"><path d="m6 4 10 6-10 6z"/></svg></button>
             </div>
             <div class="display-modes" aria-label="Modo de simulación">
               <button data-display="3d" class="active">3D</button>
@@ -267,15 +271,20 @@
             <button class="toolbar-button" data-action="fitStock" title="Enfocar solamente la pieza">Pieza</button>
             <button class="toolbar-button mobile-zoom-button" type="button" data-mobile-zoom="out" title="Alejar">−</button>
             <button class="toolbar-button mobile-zoom-button" type="button" data-mobile-zoom="in" title="Acercar">＋</button>
-            <label class="toolbar-select small-hide">Calidad<select id="renderQuality"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="ultra">Ultra</option></select></label>
-            <label class="mini-toggle"><input id="showRapids" type="checkbox" checked><span></span>Rápidos</label>
-            <label class="mini-toggle"><input id="showCuts" type="checkbox" checked><span></span>Corte</label>
-            <label class="mini-toggle"><input id="showGrid" type="checkbox" checked><span></span>Cuadrícula</label>
-            <label class="mini-toggle"><input id="showTable" type="checkbox" checked><span></span>Mesa</label>
-            <label class="mini-toggle lathe-only"><input id="showTurret" type="checkbox" checked><span></span>Torreta</label>
-            <label class="mini-toggle lathe-only safety-toggle"><input id="stopOnCollision" type="checkbox" checked><span></span>Parar en colisión</label>
             <label class="speed-control">Velocidad<input id="speedRange" type="range" min="1" max="100" value="35"><output id="speedOut">35×</output></label>
-            <button class="icon-button expand-button" data-action="maximizeSimulation" title="Maximizar simulador">⛶</button>
+            <details class="sim-options">
+              <summary title="Opciones de visualización"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M7 3v4M4 10h12M13 8v4M4 15h12M9 13v4"/></svg><span>Más</span></summary>
+              <div class="sim-options-popover">
+                <label class="toolbar-select">Detalle<select id="renderQuality"><option value="low">Básico</option><option value="medium" selected>Normal</option><option value="high">Alto</option><option value="ultra">Máximo</option></select></label>
+                <label class="mini-toggle"><input id="showRapids" type="checkbox" checked><span></span>Rápidos</label>
+                <label class="mini-toggle"><input id="showCuts" type="checkbox" checked><span></span>Corte</label>
+                <label class="mini-toggle"><input id="showGrid" type="checkbox" checked><span></span>Cuadrícula</label>
+                <label class="mini-toggle"><input id="showTable" type="checkbox" checked><span></span>Mesa</label>
+                <label class="mini-toggle lathe-only"><input id="showTurret" type="checkbox" checked><span></span>Torreta</label>
+                <label class="mini-toggle lathe-only safety-toggle"><input id="stopOnCollision" type="checkbox" checked><span></span>Parar en colisión</label>
+              </div>
+            </details>
+            <button class="icon-button expand-button" data-action="maximizeSimulation" title="Maximizar simulador"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8V3h5M12 3h5v5M17 12v5h-5M8 17H3v-5"/></svg></button>
           </header>
           <div class="canvas-wrap">
             <canvas id="simCanvas" aria-label="Simulación CNC 3D y trazo 2D"></canvas>
@@ -307,14 +316,13 @@
 
       <section id="bottomDock" class="bottom-dock panel">
         <header class="dock-tabs">
-          <button class="dock-tab active" data-dock="diagnostics">Diagnóstico <span id="alarmCount" class="badge">0</span></button>
-          <button class="dock-tab" data-dock="variables">Variables Macro</button>
+          <button class="dock-tab" data-dock="diagnostics">Diagnóstico <span id="alarmCount" class="badge">0</span></button>
+          <button class="dock-tab active" data-dock="variables">Variables</button>
           <button class="dock-tab" data-dock="codes">Códigos CNC <span id="codeCount" class="badge neutral">0</span></button>
-          <button class="dock-tab" data-dock="trace">Traza</button>
           <button class="dock-collapse" data-action="toggleDock" title="Ocultar panel">⌄</button>
         </header>
-        <div id="diagnosticsPane" class="dock-pane active"><div id="diagnostics" class="diagnostics"><div class="empty-state">Valida el programa para revisar alarmas y advertencias.</div></div></div>
-        <div id="variablesPane" class="dock-pane">
+        <div id="diagnosticsPane" class="dock-pane"><div id="diagnostics" class="diagnostics"><div class="empty-state">Sin incidencias.</div></div></div>
+        <div id="variablesPane" class="dock-pane active">
           <div class="dock-filter"><input id="variableFilter" placeholder="Filtrar #100, #500…"><button id="addVariableBtn">Asignar variable</button></div>
           <div id="variablesTable" class="variables-grid"></div>
         </div>
@@ -323,24 +331,15 @@
           <div class="catalog-note">La disponibilidad exacta depende del control, las opciones instaladas y el fabricante de la máquina. Los códigos M pueden ser personalizados por el constructor.</div>
           <div id="codeDictionary" class="code-dictionary"></div>
         </div>
-        <div id="tracePane" class="dock-pane"><pre id="traceLog">Sin ejecución.</pre></div>
       </section>
     </main>
 
     <nav class="mobile-view-nav" aria-label="Vista móvil">
-      <button type="button" data-mobile-view="editor" class="active"><span class="mobile-view-icon">⌨</span><span>Código</span></button>
-      <button type="button" data-mobile-view="sim"><span class="mobile-view-icon">◈</span><span>Simulación</span></button>
-      <button type="button" data-mobile-view="dock"><span class="mobile-view-icon">☷</span><span>Panel</span></button>
+      <button type="button" data-mobile-view="editor" class="active"><span class="mobile-view-icon"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 5-4 5 4 5M13 5l4 5-4 5M11 3 9 17"/></svg></span><span>Código</span></button>
+      <button type="button" data-mobile-view="sim"><span class="mobile-view-icon"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14V6l7-4 7 4v8l-7 4zM3 6l7 4 7-4M10 10v8"/></svg></span><span>Simulación</span></button>
+      <button type="button" data-mobile-view="dock"><span class="mobile-view-icon"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 4h14v12H3zM3 8h14M8 8v8"/></svg></span><span>Panel</span></button>
     </nav>
 
-    <footer class="global-statusbar">
-      <span id="statusMessage">Preparado</span>
-      <span id="stockSummary">Mesa 600 × 400 · Pieza 220 × 120 × 30 mm</span>
-      <span id="offsetSummary">G54 X0 Y0 Z0</span>
-      <span id="toolSummary">T3 Ø10 H50</span>
-      <span class="status-spacer"></span>
-      <span>CNCVexa Simulator v5.7.3</span>
-    </footer>
   </div>
 
   <input id="programFileInput" type="file" accept=".nc,.tap,.txt,.cnc,.gcode" hidden>
@@ -409,7 +408,7 @@
       <div class="dialog-body">
         <div class="workspace-header"><div><strong>Modelo de revolución X–Z</strong><span>X se programa como diámetro y Z0 corresponde a la cara frontal de la pieza.</span></div><label class="unit-selector">Unidad<select id="latheUnit"><option value="mm">Milímetros (mm)</option><option value="in">Pulgadas (in)</option></select></label></div>
         <div class="form-section"><h3>Materia prima</h3><div class="form-grid four"><label>Diámetro exterior <span class="lathe-unit-mark">(mm)</span><input id="latheDiameter" class="lathe-length" type="number" min="1" step="1" value="60"></label><label>Diámetro interior <span class="lathe-unit-mark">(mm)</span><input id="latheBore" class="lathe-length" type="number" min="0" step="1" value="0"></label><label>Longitud <span class="lathe-unit-mark">(mm)</span><input id="latheLength" class="lathe-length" type="number" min="1" step="1" value="120"></label><label>Resolución del perfil <span class="lathe-unit-mark">(mm)</span><input id="latheResolution" class="lathe-length" type="number" min="0.2" step="0.1" value="1"></label></div></div>
-        <div class="form-section"><h3>Sujeción</h3><div class="form-grid four"><label>Plato<input value="3 mordazas autocentrante" readonly></label><label>Longitud fuera del plato <span class="lathe-unit-mark">(mm)</span><input id="latheStickout" class="lathe-length" type="number" min="1" step="1" value="100"></label><label>Longitud visual del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckLength" class="lathe-length" type="number" min="5" step="1" value="30"></label><label>Calidad<select id="latheQuality"><option value="low">Baja</option><option value="medium">Media</option><option value="high" selected>Alta</option><option value="ultra">Ultra</option></select></label></div><p id="latheGripInfo" class="help-text">La cara frontal está en Z0. Las mordazas sujetan la parte de la barra que queda detrás de la longitud de salida.</p></div>
+        <div class="form-section"><h3>Sujeción</h3><div class="form-grid four"><label>Plato<input value="3 mordazas autocentrante" readonly></label><label>Longitud fuera del plato <span class="lathe-unit-mark">(mm)</span><input id="latheStickout" class="lathe-length" type="number" min="1" step="1" value="100"></label><label>Longitud visual del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckLength" class="lathe-length" type="number" min="5" step="1" value="30"></label><label>Detalle<select id="latheQuality"><option value="low">Básico</option><option value="medium">Normal</option><option value="high" selected>Alto</option><option value="ultra">Máximo</option></select></label></div><p id="latheGripInfo" class="help-text">La cara frontal está en Z0. Las mordazas sujetan la parte de la barra que queda detrás de la longitud de salida.</p></div>
         <div class="form-section"><h3>Cero de trabajo</h3><div class="form-grid two"><label>Origen Z<select id="latheZeroMode"><option value="front" selected>Cara frontal (Z0)</option><option value="back">Cara posterior</option></select></label><label>Offset G54 en X<input id="latheOffsetX" type="number" step="0.001" value="0"></label></div><p class="help-text">La línea central del husillo corresponde a X0. En programación por diámetro, X60 coloca la punta sobre una barra de Ø60.</p></div>
         <div class="form-section"><h3>Seguridad y colisiones</h3><label class="check-row"><input id="latheSafetyEnabled" type="checkbox" checked><span>Analizar movimientos rápidos, sobrecarreras, cruce de X0 y aproximación al plato</span></label><div class="form-grid four"><label>Holgura del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckClearance" class="lathe-length" type="number" min="0" step="0.5" value="2"></label><label>Holgura del portaherramientas <span class="lathe-unit-mark">(mm)</span><input id="latheHolderClearance" class="lathe-length" type="number" min="0" step="0.5" value="4"></label><label>Límite absoluto X <span class="lathe-unit-mark">(mm)</span><input id="latheXLimit" class="lathe-length" type="number" min="1" step="10" value="400"></label><label>Margen Z fuera de pieza <span class="lathe-unit-mark">(mm)</span><input id="latheZMargin" class="lathe-length" type="number" min="10" step="10" value="250"></label></div><p class="help-text">La detección es preventiva y aproximada. Una alarma detiene la animación si “Parar en colisión” está activado.</p></div>
       </div>
@@ -450,7 +449,12 @@
   </dialog>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="js/i18n.js?v=5.7.2"></script>
-  <script type="module" src="js/app.js?v=5.7.2"></script>
+  <script src="js/i18n.js?v=6.0.2"></script>
+  <script type="module" src="js/app.js?v=6.0.2"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+    }
+  </script>
 </body>
 </html>

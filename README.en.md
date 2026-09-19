@@ -202,6 +202,10 @@ Open the published version:
 
 No Python installation or always-on server is required.
 
+### Install as an app
+
+CNCVexa includes a web app manifest and offline support. In Chrome or Edge, use the **Install CNCVexa** icon in the address bar; on Android, choose **Install app** or **Add to Home screen**.
+
 ---
 
 ## Controls
@@ -295,15 +299,30 @@ M30
 ```text
 CNCVexa-Simulator/
 ├── .github/
+│   ├── workflows/        # Automated validation
 │   └── FUNDING.yml       # GitHub support link
-├── assets/
-├── js/
-├── samples/
-├── index.html
-├── styles.css
+├── docs/                 # GitHub Pages site
+│   ├── assets/
+│   ├── js/
+│   ├── index.html
+│   ├── privacy.html
+│   ├── site.webmanifest
+│   ├── sw.js
+│   ├── robots.txt
+│   ├── sitemap.xml
+│   ├── CNAME
+│   └── .nojekyll
+├── tests/                # Mill, lathe, and PWA smoke tests
 ├── README.md
 ├── README.en.md
-└── .nojekyll
+├── LICENSE
+└── package.json
+```
+
+Run the local validation with:
+
+```bash
+npm test
 ```
 
 ---

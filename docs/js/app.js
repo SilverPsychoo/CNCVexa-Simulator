@@ -1,12 +1,14 @@
-import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=5.7.2';
-import {CNCInterpreter} from './interpreter.js?v=5.7.2';
-import {StockSimulator} from './simulator.js?v=5.7.2';
-import {LatheInterpreter} from './lathe-interpreter.js?v=5.7.2';
-import {LatheSimulator} from './lathe-simulator.js?v=5.7.2';
+import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=6.0.2';
+import {CNCInterpreter} from './interpreter.js?v=6.0.2';
+import {StockSimulator} from './simulator.js?v=6.0.2';
+import {LatheInterpreter} from './lathe-interpreter.js?v=6.0.2';
+import {LatheSimulator} from './lathe-simulator.js?v=6.0.2';
+import {SimulationWorkerClient} from './simulation-worker-client.js?v=6.0.2';
 
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
 const t=value=>window.CNCVexaI18n?.translateString(String(value))??String(value);
+const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 const localizedInput=(selector,source)=>{const el=$(selector);if(!el)return;el.dataset.i18nSource=source;el.value=t(source);};
 const canonicalInputValue=selector=>{const el=$(selector);if(!el)return '';const source=el.dataset.i18nSource;if(source&&el.value===t(source))return source;return el.value;};
 const deepClone=value=>JSON.parse(JSON.stringify(value));
@@ -40,7 +42,7 @@ const DEFAULT_TOOL_ASSIGNMENTS={
 function toolFromPreset(presetId){const preset=CUTTER_LIBRARY.find(item=>item.id===presetId);if(!preset)return null;return{diameter:preset.diameter,length:preset.length,type:preset.type,name:preset.name,angle:preset.angle||90,displayUnit:preset.system,presetId:preset.id};}
 function createDefaultToolTable(){const table={};for(const [number,presetId] of Object.entries(DEFAULT_TOOL_ASSIGNMENTS)){const tool=toolFromPreset(presetId);if(tool)table[number]=tool;}return table;}
 
-const editor=$('#codeEditor'),lineNumbers=$('#lineNumbers'),canvas=$('#simCanvas');
+const editor=$('#codeEditor'),lineNumbers=$('#lineNumbers'),highlightLayer=$('#codeHighlight'),highlightCode=$('#codeHighlight code'),canvas=$('#simCanvas');
 const millSim=new StockSimulator(canvas),latheSim=new LatheSimulator(canvas);latheSim.setActive(false);let sim=millSim;
 const appRoot=$('#appRoot'),mainArea=$('.main-area'),workbench=$('#workbench');
 
@@ -49,12 +51,14 @@ for(let n=54;n<=59;n++)config.offsets[`G${n}`]={x:0,y:0,z:0};
 const DEFAULT_LATHE_STOCK={units:'mm',diameter:60,bore:0,length:120,stickout:100,chuckLength:30,resolution:1,renderQuality:'high',zeroMode:'front',safety:{enabled:true,chuckClearance:2,holderClearance:4,xLimit:400,zMargin:250,zMin:-370,zMax:250,stopOnCollision:true}};
 const DEFAULT_LATHE_TOOLS={1:{name:'Buril exterior 80°',type:'od',noseRadius:.8,insertWidth:6,orientation:3,offset:1},2:{name:'Buril de acabado 55°',type:'finish',noseRadius:.4,insertWidth:5,orientation:3,offset:2},3:{name:'Ranurador 3 mm',type:'groove',noseRadius:.2,insertWidth:3,orientation:3,offset:3},4:{name:'Roscador 60°',type:'thread',noseRadius:.15,insertWidth:4,orientation:3,offset:4},5:{name:'Barra de mandrinar',type:'boring',noseRadius:.4,insertWidth:5,orientation:2,offset:5},6:{name:'Broca axial Ø10 mm',type:'drill',noseRadius:5,insertWidth:10,orientation:1,offset:6}};
 const latheConfig={stock:deepClone(DEFAULT_LATHE_STOCK),offsets:{},tools:deepClone(DEFAULT_LATHE_TOOLS)};for(let n=54;n<=59;n++)latheConfig.offsets[`G${n}`]={x:0,z:0};
-let machineType='mill',interpreter=new CNCInterpreter(config),compiledSteps=[],runIndex=-1,animation=null,activeAc=0,acMatches=[];
+let machineType='mill',interpreter=new CNCInterpreter(config),compiledSteps=[],runIndex=-1,animation=null,activeAc=0,acMatches=[],sourceRevision=0,compiledRevision=-1,compileSucceeded=false;
+let simulationId=0,workerSession=null,pendingWorkerBatch=null,workerReady=false,workerFailed=false;
+const simulationWorker=new SimulationWorkerClient({onMessage:handleWorkerMessage,onError:handleWorkerFailure});
 const DEFAULT_PROGRAM_NAMES=new Set(['programa_cnc.nc','programa_torno.nc','cnc_program.nc','lathe_program.nc']);
 const defaultProgramName=machine=>window.CNCVexaI18n?.language==='en'?(machine==='lathe'?'lathe_program.nc':'cnc_program.nc'):(machine==='lathe'?'programa_torno.nc':'programa_cnc.nc');
 const defaultProjectFileName=machine=>window.CNCVexaI18n?.language==='en'?(machine==='lathe'?'lathe_project.nc':'milling_project.nc'):(machine==='lathe'?'proyecto_torno.nc':'proyecto_fresa.nc');
 const defaultProjectBase=()=>window.CNCVexaI18n?.language==='en'?'cnc_project':'proyecto_cnc';
-let currentFileName=defaultProgramName('mill'),dirty=false,selectedOffset='G54',offsetDraft=null,toastTimer=null,autosaveTimer=null;
+let currentFileName=defaultProgramName('mill'),dirty=false,selectedOffset='G54',offsetDraft=null,toastTimer=null,autosaveTimer=null,liveCompileTimer=null;
 const modeSessions={mill:{code:'',name:defaultProgramName('mill')},lathe:{code:'',name:defaultProgramName('lathe')}};
 const activeConfig=()=>machineType==='lathe'?latheConfig:config;
 const activeCodes=()=>machineType==='lathe'?LATHE_CODES:CODES;
@@ -129,7 +133,7 @@ function replaceEditor(text,{name=currentFileName,mark=true,reset=false,selectio
 }
 
 function setDirty(value=true){dirty=value;$('#dirtyMark').classList.toggle('hidden',!dirty);}
-function setStatus(message){$('#statusMessage').textContent=t(message);}
+function setStatus(message){appRoot.dataset.status=t(message);}
 function toast(message,type='ok'){
   clearTimeout(toastTimer);const el=$('#toast');el.textContent=t(message);el.className=`toast ${type==='error'?'error':''}`;toastTimer=setTimeout(()=>el.classList.add('hidden'),2400);
 }
@@ -141,7 +145,38 @@ function updateEditorChrome(){
   $('#cursorStatus').textContent=`Ln ${line}, Col ${column}`;
   const selection=Math.abs(editor.selectionEnd-editor.selectionStart);$('#selectionStatus').textContent=selection?`${selection} caracteres seleccionados`:'Sin selección';
 }
-function afterEditorChange(showAc=true){updateEditorChrome();if(showAc)showAutocomplete();setDirty(true);queueAutosave();}
+function syntaxClass(token){
+  const value=token.trim().toUpperCase();
+  if(value.startsWith('(')||value.startsWith(';'))return 'tok-comment';
+  if(/^G\d/.test(value))return 'tok-g';
+  if(/^M\d/.test(value))return 'tok-m';
+  if(/^T\d/.test(value))return 'tok-t';
+  if(/^[SF](?:\s|[-+#\d.[\]])/.test(value))return 'tok-sf';
+  if(/^[XYZIJKRABCUVWH](?:\s|[-+#\d.[\]])/.test(value))return 'tok-axis';
+  if(/^N\d/.test(value))return 'tok-line';
+  if(/^#\d/.test(value))return 'tok-var';
+  return 'tok-keyword';
+}
+function renderSyntaxHighlight(){
+  const pattern=/\([^\)\r\n]*\)|;[^\r\n]*|#\d+|\b(?:IF|THEN|WHILE|DO\d*|END\d*|GOTO|CALL|EQ|NE|GT|GE|LT|LE|AND|OR|XOR|MOD)\b|\bG\d+(?:\.\d+)?\b|\bM\d+\b|\bT\d+\b|\b[SF]\s*(?:#\d+|\[[^\]\r\n]*\]|[-+]?(?:\d+(?:\.\d*)?|\.\d+))|\b[XYZIJKRABCUVWH]\s*(?:#\d+|\[[^\]\r\n]*\]|[-+]?(?:\d+(?:\.\d*)?|\.\d+))|\bN\d+\b/gi;
+  const source=editor.value;let html='',last=0,match;
+  while((match=pattern.exec(source))){html+=escapeHtml(source.slice(last,match.index));html+=`<span class="${syntaxClass(match[0])}">${escapeHtml(match[0])}</span>`;last=pattern.lastIndex;}
+  html+=escapeHtml(source.slice(last));highlightCode.innerHTML=html+(source.endsWith('\n')?' ':'');syncEditorScroll();
+}
+function syncEditorScroll(){lineNumbers.scrollTop=editor.scrollTop;highlightLayer.scrollTop=editor.scrollTop;highlightLayer.scrollLeft=editor.scrollLeft;}
+function isCompilationCurrent(){return compileSucceeded&&compiledRevision===sourceRevision;}
+function invalidateCompilation(){
+  sourceRevision++;
+  if(compiledRevision<0)return;
+  stopPlayback('ready');cancelSimulationWork();compiledRevision=-1;compileSucceeded=false;compiledSteps=[];runIndex=-1;sim.resetCut();
+  $('#alarmCount').textContent='0';$('#diagnostics').innerHTML=`<div class="empty-state">${t('Sin incidencias.')}</div>`;
+  $('#parseStatus').textContent=t('Sin validar');$('#parseStatus').className='';updateRunMonitor('ready');setStatus('Sin validar');
+}
+function scheduleLiveCompile(){
+  clearTimeout(liveCompileTimer);const revision=sourceRevision;
+  liveCompileTimer=setTimeout(()=>{if(revision===sourceRevision&&compiledRevision!==sourceRevision)compileProgram({silent:true});},320);
+}
+function afterEditorChange(showAc=true){updateEditorChrome();renderSyntaxHighlight();invalidateCompilation();scheduleLiveCompile();if(showAc)showAutocomplete();setDirty(true);queueAutosave();}
 
 const normalizeWorkspace=raw=>{
   const source=raw||{},z=Number(source.z)||DEFAULT_WORKSPACE.z,table=source.table||{};
@@ -163,38 +198,38 @@ function refreshStockUnits(){const mark=`(${unitLabel(stockDisplayUnit)})`;$$('.
 function setStockForm(raw=config.workspace){const s=normalizeWorkspace(raw);stockDisplayUnit=s.units;writeStockLength('#tableX',s.table.x);writeStockLength('#tableY',s.table.y);writeStockLength('#tableZ',s.table.z);writeStockLength('#tableTopZ',s.table.topZ);writeStockLength('#stockX',s.x);writeStockLength('#stockY',s.y);writeStockLength('#stockZ',s.z);writeStockLength('#stockPosX',s.position.x);writeStockLength('#stockPosY',s.position.y);$('#zeroMode').value=s.zeroMode;$('#resolution').value=String(s.resolution);$('#renderQuality').value=s.renderQuality;$('#tableSlotDirection').value=s.table.slotDirection;refreshStockUnits();}
 function stockSettings(){const u=$('#stockUnit').value;return normalizeWorkspace({units:u,x:lengthToMm($('#stockX').value,u),y:lengthToMm($('#stockY').value,u),z:lengthToMm($('#stockZ').value,u),resolution:+$('#resolution').value||1.5,renderQuality:$('#renderQuality').value||'high',zeroMode:$('#zeroMode').value,position:{x:lengthToMm($('#stockPosX').value,u),y:lengthToMm($('#stockPosY').value,u)},table:{x:lengthToMm($('#tableX').value,u),y:lengthToMm($('#tableY').value,u),z:lengthToMm($('#tableZ').value,u),topZ:lengthToMm($('#tableTopZ').value,u),slotDirection:$('#tableSlotDirection').value}});}
 function updatePiecePositionInfo(){if(!$('#piecePositionInfo'))return;const s=stockSettings(),o=pieceOrigin(s),b=pieceBounds(s),tb={minX:-s.table.x/2,maxX:s.table.x/2,minY:-s.table.y/2,maxY:s.table.y/2},outside=b.minX<tb.minX||b.maxX>tb.maxX||b.minY<tb.minY||b.maxY>tb.maxY;const u=s.units;$('#piecePositionInfo').textContent=`Origen visual de pieza: X${lengthInUnit(o.x,u)} Y${lengthInUnit(o.y,u)} Z${lengthInUnit(o.z,u)} ${unitLabel(u)}.${outside?' Atención: una parte de la pieza queda fuera de la mesa.':''}`;$('#piecePositionInfo').classList.toggle('warning-text',outside);}
-function updateSummaries(){
-  if(machineType==='lathe'){
-    const s=latheConfig.stock,o=latheConfig.offsets.G54||{x:0,z:0},u=s.units||'mm',toolNumber=interpreter?.state?.tool||1,tool=latheConfig.tools[toolNumber]||latheConfig.tools[1];
-    $('#stockSummary').textContent=`Torno · Barra Ø${lengthInUnit(s.diameter,u)} × ${lengthInUnit(s.length,u)} ${unitLabel(u)}${s.bore?` · Agujero Ø${lengthInUnit(s.bore,u)}`:''}`;
-    $('#offsetSummary').textContent=`G54 X${lengthInUnit(o.x,u)} Z${lengthInUnit(o.z,u)} ${unitLabel(u)}`;
-    $('#toolSummary').textContent=`T${String(toolNumber).padStart(2,'0')}${String(tool?.offset||toolNumber).padStart(2,'0')} · ${t(tool?.name||'Herramienta de torno')}`;return;
-  }
-  const s=config.workspace,o=config.offsets.G54||{x:0,y:0,z:0},u=s.units||'mm',toolNumber=+$(`#toolNumber`).value||Object.keys(config.tools).map(Number)[0]||3,tool=config.tools[toolNumber]||config.tools[3];
-  $('#stockSummary').textContent=`Mesa ${lengthInUnit(s.table.x,u)} × ${lengthInUnit(s.table.y,u)} · Pieza ${lengthInUnit(s.x,u)} × ${lengthInUnit(s.y,u)} × ${lengthInUnit(s.z,u)} ${unitLabel(u)}`;
-  $('#offsetSummary').textContent=`G54 X${lengthInUnit(o.x,u)} Y${lengthInUnit(o.y,u)} Z${lengthInUnit(o.z,u)} ${unitLabel(u)}`;
-  const tu=tool?.displayUnit||'mm';$('#toolSummary').textContent=`T${toolNumber} ${t(tool?.name||TOOL_TYPES[tool?.type]||'Cortador')} · Ø${lengthInUnit(tool?.diameter||10,tu)} ${unitLabel(tu)}`;
-}
+function updateSummaries(){}
 function applyStock({compile=true,close=true,notify=true}={}){
   const s=stockSettings();syncWorkspaceConfig(s);if($('#syncG54OnApply').checked)config.offsets.G54=pieceOrigin(s);sim.configure(s);sim.setRenderQuality(s.renderQuality);$('#renderQuality').value=s.renderQuality;updateSummaries();if(compile)compileProgram();if(close)$('#stockDialog').close();if(notify)toast('Mesa y pieza actualizadas');
 }
 
 function initialRunState(){return compiledSteps[0]?.state||(machineType==='lathe'?new LatheInterpreter(latheConfig):new CNCInterpreter(config)).state;}
+function updateRunMonitor(state='ready'){
+  appRoot.dataset.runState=state;
+  const running=state==='running',label=running?'Pausar':state==='paused'?'Continuar':'Ejecutar';
+  $$('[data-run-label]').forEach(runLabel=>runLabel.textContent=t(label));
+  $$('[data-run-icon]').forEach(icon=>icon.innerHTML=running?'<path d="M5 4h3v12H5zM12 4h3v12h-3z"/>':'<path d="m6 4 10 6-10 6z"/>');
+  $$('.play-compact').forEach(compact=>{compact.title=t(running?'Pausar (F5)':state==='paused'?'Continuar (F5)':'Ejecutar (F5)');compact.setAttribute('aria-pressed',String(running));});
+}
 function renderVariables(){
   const filter=$('#variableFilter').value.trim(),entries=[...interpreter.variables.entries()].sort((a,b)=>a[0]-b[0]).filter(([id])=>!filter||`#${id}`.includes(filter));
   $('#variablesTable').innerHTML=entries.length?entries.map(([id,value])=>`<div class="var-cell"><b>#${id}</b><span>${formatNumber(value)}</span></div>`).join(''):`<div class="empty-state">${t('No hay variables asignadas.')}</div>`;
 }
 function renderDiagnostics(){
+  if(compiledRevision!==sourceRevision){$('#alarmCount').textContent='0';$('#diagnostics').innerHTML=`<div class="empty-state">${t('Sin incidencias.')}</div>`;$('#parseStatus').textContent=t('Sin validar');$('#parseStatus').className='';return;}
   const list=interpreter.diagnostics;$('#alarmCount').textContent=list.length;
-  $('#diagnostics').innerHTML=list.length?list.map(item=>`<div class="diag ${item.type==='error'?'error':item.type==='info'?'info':''}" data-code="${escapeHtml(item.code||'')}"><b>${t(item.type==='error'?'ALARMA':item.type==='info'?'INFORMACIÓN':'ADVERTENCIA')} · ${t('Línea')} ${item.line}${item.code?` · ${escapeHtml(item.code)}`:''}</b><span>${escapeHtml(t(item.message))}</span></div>`).join(''):`<div class="empty-state">${t('Sin alarmas. El programa compiló correctamente.')}</div>`;
+  $('#diagnostics').innerHTML=list.length?list.map(item=>`<button type="button" class="diag ${item.type==='error'?'error':item.type==='info'?'info':''}" data-line="${Number(item.line)||1}" data-code="${escapeHtml(item.code||'')}"><b>${t(item.type==='error'?'ALARMA':item.type==='info'?'INFORMACIÓN':'ADVERTENCIA')} · ${t('Línea')} ${item.line}${item.code?` · ${escapeHtml(item.code)}`:''}</b><span>${escapeHtml(t(item.message))}</span></button>`).join(''):`<div class="empty-state">${t('Sin incidencias.')}</div>`;
   const hasError=list.some(item=>item.type==='error');$('#parseStatus').textContent=hasError?`${list.length} incidencias`:'Programa válido';$('#parseStatus').className=hasError?'status-bad':'status-ok';
 }
-function compileProgram({silent=false}={}){
-  stopPlayback();interpreter=machineType==='lathe'?new LatheInterpreter(latheConfig).parse(editor.value).compile():new CNCInterpreter(config).parse(editor.value).compile();compiledSteps=interpreter.steps;sim.setPath(compiledSteps);sim.resetCut();runIndex=-1;
+function compileProgram({silent=false,forRun=false}={}){
+  clearTimeout(liveCompileTimer);
+  stopPlayback('compiling');cancelSimulationWork();setStatus('Compilando');
+  interpreter=machineType==='lathe'?new LatheInterpreter(latheConfig).parse(editor.value).compile():new CNCInterpreter(config).parse(editor.value).compile();compiledSteps=interpreter.steps;compiledRevision=sourceRevision;runIndex=-1;
   renderVariables();renderDiagnostics();
-  $('#traceLog').textContent=interpreter.trace.length?interpreter.trace.map(line=>t(line)).join('\n'):t(`Compilado: ${compiledSteps.length} movimientos, ${interpreter.diagnostics.length} incidencias.`);
-  updateHud(initialRunState());
-  const errors=interpreter.diagnostics.filter(x=>x.type==='error').length;setStatus(errors?`Compilación con ${errors} error(es)`:`Compilado: ${compiledSteps.length} movimientos`);
+  const errors=interpreter.diagnostics.filter(x=>x.type==='error').length;compileSucceeded=errors===0;
+  if(!errors){sim.setPath(compiledSteps);sim.resetCut();updateHud(initialRunState());}
+  updateRunMonitor(errors?'error':'ready');setStatus(errors?`Compilación con ${errors} error(es)`:`Preparado: ${compiledSteps.length} movimientos`);
+  if(errors&&(forRun||!silent)){const first=interpreter.diagnostics.find(item=>item.type==='error');if(first)selectEditorLine(first.line,false);activateDock('diagnostics');}
   if(!silent)toast(errors?'Hay errores en el programa':'Programa validado',errors?'error':'ok');
   return errors===0;
 }
@@ -206,26 +241,117 @@ function updateHud(state,step=null){
   $('#stateSpindle').textContent=step?.state?.spindle||state.spindle||'OFF';$('#stateRpm').textContent=Math.round(step?.rpm??state.rpm??0);$('#stateCoolant').textContent=step?.state?.coolant||state.coolant||'OFF';
   const tn=step?.tool??state.tool??0,to=step?.offset??state.offset??tn;$('#stateTool').textContent=machineType==='lathe'?`T${String(tn).padStart(2,'0')}${String(to).padStart(2,'0')}`:`T${tn}`;
 }
-function selectEditorLine(lineNo){
-  const rows=editor.value.split('\n');let start=0;for(let i=0;i<lineNo-1;i++)start+=rows[i].length+1;const row=rows[lineNo-1]||'';editor.setSelectionRange(start,start+row.length);editor.focus({preventScroll:true});updateEditorChrome();
+function selectEditorLine(lineNo,focus=true){
+  const rows=editor.value.split('\n'),target=Math.max(1,Math.min(rows.length,Number(lineNo)||1));let start=0;for(let i=0;i<target-1;i++)start+=rows[i].length+1;const row=rows[target-1]||'';editor.setSelectionRange(start,start+row.length);
+  const lineHeight=parseFloat(getComputedStyle(editor).lineHeight)||20;editor.scrollTop=Math.max(0,(target-1)*lineHeight-editor.clientHeight*.35);syncEditorScroll();if(focus)editor.focus({preventScroll:true});updateEditorChrome();
 }
-function stepProgram(){
-  if(!compiledSteps.length){if(!compileProgram())return false;}
-  if(runIndex>=compiledSteps.length-1){stopPlayback();toast('Fin del programa');return false;}
-  const step=compiledSteps[++runIndex];sim.applyStep(step);updateHud(step.state,step);selectEditorLine(step.line);
-  const collision=step.collisions?.find(item=>item.severity==='error')||step.collisions?.[0];
-  if(collision){showAlarm(`L${step.line}: ${collision.message}`);setStatus(`Colisión detectada en línea ${step.line}`);if(machineType==='lathe'&&$('#stopOnCollision').checked){stopPlayback();toast('Simulación detenida por colisión','error');return false;}}else if(step.kind==='toolchange'){showAlarm(`Cambio de torreta: T${String(step.toTool||0).padStart(2,'0')}${String(step.offset||0).padStart(2,'0')}`);setTimeout(hideAlarm,650);}else if(step.cut&&step.state.spindle==='OFF')showAlarm(`L${step.line}: corte con husillo apagado`);else hideAlarm();
-  setStatus(`${step.kind==='toolchange'?'Cambio de herramienta':'Ejecutando'} línea ${step.line} · ${runIndex+1}/${compiledSteps.length}`);return true;
+function syncPlaybackFrame(step,state='running'){
+  if(!step)return;updateHud(step.state,step);selectEditorLine(step.line,state!=='running');updateRunMonitor(state);setStatus(`${step.kind==='toolchange'?'Cambio de herramienta':'Línea'} ${step.line} · ${runIndex+1}/${compiledSteps.length}`);
+}
+function cancelSimulationWork(){
+  if(workerSession)simulationWorker.cancel(workerSession.id);
+  simulationId++;workerSession=null;pendingWorkerBatch=null;workerReady=false;
+}
+function handleWorkerFailure(){
+  workerFailed=true;workerSession=null;pendingWorkerBatch=null;workerReady=false;
+}
+function handleWorkerMessage(message){
+  if(!workerSession||message.simulationId!==workerSession.id)return;
+  if(message.type==='ready'){workerReady=true;return;}
+  if(message.type!=='batch')return;
+  pendingWorkerBatch={...message,applyIndex:0,innerApplyIndex:0,metadataIndex:message.startIndex+1,readyToRender:false};
+}
+function workerConfiguration(){
+  if(machineType==='lathe')return{diameter:latheSim.cfg.diameter,length:latheSim.cfg.length,resolution:latheSim.cfg.resolution};
+  const cfg=millSim.cfg,quality=millSim.qualitySettings();
+  return{x:cfg.x,y:cfg.y,z:cfg.z,resolution:cfg.resolution,zeroMode:cfg.zeroMode,positionX:cfg.position.x,positionY:cfg.position.y,tableTopZ:cfg.table.topZ,pathStep:quality.pathStep};
+}
+function startWorkerSession(){
+  if(!simulationWorker.available||workerFailed)return false;
+  const id=++simulationId,options={simulationId:id,machine:machineType,steps:compiledSteps,cursor:runIndex,config:workerConfiguration()};
+  if(machineType==='lathe'){options.profile=latheSim.profile;options.innerProfile=latheSim.innerProfile;}else options.depth=millSim.depth;
+  if(!simulationWorker.start(options))return false;
+  workerSession={id,machine:machineType,revision:compiledRevision};pendingWorkerBatch=null;workerReady=false;return true;
+}
+function handleStepFeedback(step,{redraw=false}={}){
+  const collision=step?.collisions?.find(item=>item.severity==='error')||step?.collisions?.[0];
+  if(collision){showAlarm(`L${step.line}: ${collision.message}`);setStatus(`Colisión detectada en línea ${step.line}`);if(machineType==='lathe'&&$('#stopOnCollision').checked){if(redraw)sim.draw();syncPlaybackFrame(step,'paused');stopPlayback('paused');toast('Simulación detenida por colisión','error');return false;}}
+  else if(step?.kind==='toolchange'){showAlarm(`Cambio de torreta: T${String(step.toTool||0).padStart(2,'0')}${String(step.offset||0).padStart(2,'0')}`);setTimeout(hideAlarm,650);}
+  else if(step?.cut&&step.state.spindle==='OFF')showAlarm(`L${step.line}: corte con husillo apagado`);
+  else hideAlarm();
+  return true;
+}
+function stepProgram({redraw=true,syncUi=true}={}){
+  if(!isCompilationCurrent()||!compiledSteps.length){if(!compileProgram({silent:true,forRun:true}))return false;}
+  if(runIndex>=compiledSteps.length-1){stopPlayback('complete');toast('Fin del programa');return false;}
+  const step=compiledSteps[++runIndex];sim.applyStep(step,redraw);if(syncUi)syncPlaybackFrame(step,animation?'running':'paused');
+  return handleStepFeedback(step,{redraw:!redraw});
+}
+function fallbackPlaybackTick(){
+  const amount=Math.max(1,Math.round(+$('#speedRange').value/3)),deadline=performance.now()+(sim.renderQuality==='ultra'?8:10);let lastStep=null;
+  for(let i=0;i<amount;i++){
+    if(!stepProgram({redraw:false,syncUi:false}))return;
+    lastStep=compiledSteps[runIndex];
+    if(runIndex>=compiledSteps.length-1)break;
+    if(i>0&&performance.now()>=deadline)break;
+  }
+  if(lastStep){sim.draw();syncPlaybackFrame(lastStep,'running');}
+  if(runIndex>=compiledSteps.length-1){stopPlayback('complete');setStatus(`Fin de programa · ${compiledSteps.length} movimientos`);toast('Fin del programa');refineStoppedFrame('complete');cancelSimulationWork();return;}
+  animation=requestAnimationFrame(fallbackPlaybackTick);
+}
+function nextWorkerStepLimit(speed){
+  let limit=Math.max(1,Math.round(Math.pow(Math.max(1,speed),1.18)*2));
+  if(machineType==='lathe'&&$('#stopOnCollision').checked){
+    const last=Math.min(compiledSteps.length-1,runIndex+limit);
+    for(let index=runIndex+1;index<=last;index++)if(compiledSteps[index]?.collisions?.length){limit=index-runIndex;break;}
+  }
+  return limit;
+}
+function requestWorkerBatch(){
+  if(!workerSession||!workerReady||pendingWorkerBatch||simulationWorker.pending)return;
+  const speed=clamp(Number($('#speedRange').value)||35,1,100),budgetMs=.65+speed*.0735,stepLimit=nextWorkerStepLimit(speed);
+  simulationWorker.run({simulationId:workerSession.id,budgetMs,stepLimit,dirtyLimit:14000});
+}
+function consumeWorkerBatch(deadline){
+  const batch=pendingWorkerBatch;if(!batch)return true;
+  const indices=batch.indices||new Uint32Array(),values=batch.values||new Float32Array();
+  while(batch.applyIndex<indices.length){const end=Math.min(indices.length,batch.applyIndex+512);sim.applyMaterialDeltas(indices.subarray(batch.applyIndex,end),values.subarray(batch.applyIndex,end));batch.applyIndex=end;if(performance.now()>=deadline)return false;}
+  if(batch.innerIndices){while(batch.innerApplyIndex<batch.innerIndices.length){const end=Math.min(batch.innerIndices.length,batch.innerApplyIndex+512);sim.applyMaterialDeltas(null,null,batch.innerIndices.subarray(batch.innerApplyIndex,end),batch.innerValues.subarray(batch.innerApplyIndex,end));batch.innerApplyIndex=end;if(performance.now()>=deadline)return false;}}
+  while(batch.metadataIndex<=batch.endIndex){sim.applyStep(compiledSteps[batch.metadataIndex],false,{skipCut:true});batch.metadataIndex++;if((batch.metadataIndex&31)===0&&performance.now()>=deadline)return false;}
+  if(!batch.readyToRender){batch.readyToRender=true;if(performance.now()>=deadline)return false;}
+  runIndex=batch.endIndex;const lastStep=compiledSteps[runIndex];pendingWorkerBatch=null;sim.draw();syncPlaybackFrame(lastStep,'running');
+  if(!handleStepFeedback(lastStep))return false;
+  if(batch.done||runIndex>=compiledSteps.length-1){stopPlayback('complete');setStatus(`Fin de programa · ${compiledSteps.length} movimientos`);toast('Fin del programa');refineStoppedFrame('complete');cancelSimulationWork();return false;}
+  return true;
+}
+function workerPlaybackTick(){
+  if(workerFailed){animation=requestAnimationFrame(fallbackPlaybackTick);return;}
+  if(!workerSession){if(startWorkerSession()){animation=requestAnimationFrame(workerPlaybackTick);return;}animation=requestAnimationFrame(fallbackPlaybackTick);return;}
+  const deadline=performance.now()+9;
+  if(pendingWorkerBatch&&!consumeWorkerBatch(deadline)){if(animation)animation=requestAnimationFrame(workerPlaybackTick);return;}
+  requestWorkerBatch();
+  animation=requestAnimationFrame(workerPlaybackTick);
 }
 function playProgram(){
-  if(animation)return;
-  if(runIndex<0&&!compileProgram({silent:true})&&interpreter.diagnostics.some(x=>x.type==='error')){toast('Corrige las alarmas antes de ejecutar','error');return;}
-  if(runIndex>=compiledSteps.length-1){sim.resetCut();runIndex=-1;}
-  const tick=()=>{const amount=Math.max(1,Math.round(+$('#speedRange').value/12));for(let i=0;i<amount;i++)if(!stepProgram()){stopPlayback();return;}animation=requestAnimationFrame(tick);};
-  animation=requestAnimationFrame(tick);setStatus('Simulación en ejecución');
+  if(animation){pausePlayback();return;}
+  if(!isCompilationCurrent()&&!compileProgram({silent:true,forRun:true})){toast('Corrige las alarmas antes de ejecutar','error');return;}
+  if(runIndex>=compiledSteps.length-1){cancelSimulationWork();sim.resetCut();runIndex=-1;}
+  if(!compiledSteps.length){toast('El programa no contiene movimientos','error');return;}
+  sim.setPlaybackActive?.(true);updateRunMonitor('running');setStatus('Ejecutando');
+  const canResume=workerSession&&workerSession.machine===machineType&&workerSession.revision===compiledRevision;
+  if(canResume){simulationWorker.resume(workerSession.id);animation=requestAnimationFrame(workerPlaybackTick);return;}
+  if(startWorkerSession()){animation=requestAnimationFrame(workerPlaybackTick);return;}
+  animation=requestAnimationFrame(fallbackPlaybackTick);
 }
-function stopPlayback(){if(animation)cancelAnimationFrame(animation);animation=null;}
-function resetSimulation(){stopPlayback();sim.resetCut();runIndex=-1;hideAlarm();updateHud(initialRunState());setStatus('Simulación reiniciada');}
+function stepOnce(){cancelSimulationWork();return stepProgram();}
+function stopPlayback(state='ready'){
+  if(animation)cancelAnimationFrame(animation);animation=null;if(state==='paused'&&workerSession)simulationWorker.pause(workerSession.id);sim.setPlaybackActive?.(false);updateRunMonitor(state);
+}
+function refineStoppedFrame(expectedState){
+  setTimeout(()=>{if(!animation&&appRoot.dataset.runState===expectedState)sim.draw();},60);
+}
+function pausePlayback(){if(!animation)return;stopPlayback('paused');setStatus(`Pausa · bloque ${Math.max(0,runIndex+1)}/${compiledSteps.length}`);refineStoppedFrame('paused');}
+function resetSimulation(){stopPlayback('ready');cancelSimulationWork();sim.resetCut();runIndex=-1;hideAlarm();updateHud(initialRunState());updateRunMonitor('ready');setStatus('Preparado');}
 function showAlarm(text){$('#alarmBanner').textContent=t(text);$('#alarmBanner').classList.remove('hidden');}
 function hideAlarm(){$('#alarmBanner').classList.add('hidden');}
 
@@ -309,7 +435,7 @@ function repopulateCategories(){
 }
 function switchMachine(next,{saveCurrent=true,restoreSession=true,compile=true}={}){
   next=next==='lathe'?'lathe':'mill';if(next===machineType&&sim)return;
-  stopPlayback();hideAutocomplete();
+  stopPlayback();cancelSimulationWork();hideAutocomplete();
   if(saveCurrent)modeSessions[machineType]={code:editor.value,name:currentFileName};
   machineType=next;millSim.setActive(next==='mill');latheSim.setActive(next==='lathe');sim=next==='lathe'?latheSim:millSim;
   appRoot.classList.toggle('lathe-mode',next==='lathe');$$('.machine-switch button').forEach(button=>button.classList.toggle('active',button.dataset.machine===next));
@@ -412,7 +538,7 @@ function restoreToolTable(){
   config.tools=createDefaultToolTable();loadToolFields(3);compileProgram({silent:true});updateSummaries();toast('Tabla de herramientas restaurada');
 }
 function showInfo(title,html){$('#infoDialogTitle').textContent=t(title);$('#infoDialogBody').innerHTML=html;$('#infoDialog').showModal();}
-function showShortcuts(){const en=window.CNCVexaI18n?.language==='en';showInfo('Atajos y controles',en?`<h3>Editing</h3><p><kbd>Ctrl+Z</kbd> undo, <kbd>Ctrl+Y</kbd> redo, <kbd>Ctrl+Space</kbd> autocomplete, <kbd>Ctrl+S</kbd> save NC, and <kbd>Alt+Shift+F</kbd> format.</p><h3>Simulation</h3><p><kbd>F5</kbd> run, <kbd>F7</kbd> validate, <kbd>F10</kbd> single block, <kbd>Ctrl+R</kbd> reset, and <kbd>Shift+F11</kbd> maximize.</p><h3>Views</h3><p>Use 3D to inspect machining and the tool. In 2D you will see the top view of the toolpath. In 3D, drag with the left mouse button to rotate; use Shift or the right mouse button to pan. The mouse wheel controls zoom and double-click fits the table.</p>`:`<h3>Edición</h3><p><kbd>Ctrl+Z</kbd> deshacer, <kbd>Ctrl+Y</kbd> rehacer, <kbd>Ctrl+Espacio</kbd> autocompletar, <kbd>Ctrl+S</kbd> guardar NC y <kbd>Alt+Shift+F</kbd> formatear.</p><h3>Simulación</h3><p><kbd>F5</kbd> ejecutar, <kbd>F7</kbd> validar, <kbd>F10</kbd> bloque a bloque, <kbd>Ctrl+R</kbd> reiniciar y <kbd>Shift+F11</kbd> maximizar.</p><h3>Vistas</h3><p>Usa 3D para revisar maquinado y herramienta. En 2D verás el trazo superior de la trayectoria. En 3D, arrastra con el botón izquierdo para rotar; usa Shift o el botón derecho para desplazar. La rueda controla el zoom y doble clic encuadra la mesa.</p>`);}
+function showShortcuts(){const en=window.CNCVexaI18n?.language==='en';showInfo('Atajos y controles',en?`<h3>Editing</h3><p><kbd>Ctrl+Z</kbd> undo, <kbd>Ctrl+Y</kbd> redo, <kbd>Ctrl+Space</kbd> autocomplete, <kbd>Ctrl+S</kbd> save NC, and <kbd>Alt+Shift+F</kbd> format.</p><h3>Simulation</h3><p><kbd>F5</kbd> validate and run, pause, or resume; <kbd>F10</kbd> advances one block; <kbd>Ctrl+R</kbd> resets; and <kbd>Shift+F11</kbd> maximizes.</p><h3>Views</h3><p>Use 3D to inspect machining and the tool. In 2D you will see the top view of the toolpath. In 3D, drag with the left mouse button to rotate; use Shift or the right mouse button to pan. The mouse wheel or a pinch gesture controls zoom and double-click fits the table.</p>`:`<h3>Edición</h3><p><kbd>Ctrl+Z</kbd> deshacer, <kbd>Ctrl+Y</kbd> rehacer, <kbd>Ctrl+Espacio</kbd> autocompletar, <kbd>Ctrl+S</kbd> guardar NC y <kbd>Alt+Shift+F</kbd> formatear.</p><h3>Simulación</h3><p><kbd>F5</kbd> valida y ejecuta, pausa o continúa; <kbd>F10</kbd> avanza un bloque; <kbd>Ctrl+R</kbd> reinicia; y <kbd>Shift+F11</kbd> maximiza.</p><h3>Vistas</h3><p>Usa 3D para revisar maquinado y herramienta. En 2D verás el trazo superior de la trayectoria. En 3D, arrastra con el botón izquierdo para rotar; usa Shift o el botón derecho para desplazar. La rueda o el gesto de pellizco controlan el zoom y doble clic encuadra la mesa.</p>`);}
 function showAbout(){const en=window.CNCVexaI18n?.language==='en';showInfo('Acerca de CNCVexa Simulator',en?`<h3>CNC mill and lathe simulator</h3><p>CNCVexa integrates two independent simulation engines: an XYZ mill with a table and volumetric material removal, and an XZ lathe with stock, chuck, turret, and a revolved surface. .cncvexa projects automatically remember the machine type.</p><p>It does not replace dry run, single block, offset checks, travel-limit checks, tooling, workholding, or validation on the real controller.</p>`:`<h3>Simulador CNC de fresa y torno</h3><p>CNCVexa integra dos motores independientes: fresadora XYZ con mesa y remoción volumétrica, y torno XZ con barra, plato, torreta y superficie de revolución. Los proyectos .cncvexa recuerdan automáticamente el tipo de máquina.</p><p>No reemplaza el dry run, single block, comprobación de offsets, límites, herramienta, sujeción ni validación en el control real.</p>`);}
 
 const isMobileViewport=()=>window.matchMedia?.('(max-width: 780px)').matches??false;
@@ -434,7 +560,7 @@ function showSimulator(){
   requestAnimationFrame(()=>{sim.resize();if(machineType==='lathe')sim.fitView();else sim.fitView('scene');});
 }
 function showHome(){
-  stopPlayback();closeMenus();closeMobileMenu();appRoot.classList.remove('sim-maximized');
+  stopPlayback();cancelSimulationWork();closeMenus();closeMobileMenu();appRoot.classList.remove('sim-maximized');
   appRoot.classList.add('hidden');$('#homeScreen').classList.remove('hidden');
   if(history.replaceState && location.search) history.replaceState(null,'',`${location.pathname}${location.hash||''}`);
 }
@@ -492,7 +618,7 @@ const actions={
   openProgram:()=>$('#programFileInput').click(),saveProgram,openProject:()=>$('#projectFileInput').click(),saveProject,saveLocal:()=>saveLocal(true),loadLocal,
   undo,redo,format:formatCode,autocomplete:()=>{editor.focus();showAutocomplete(true);},selectAll:()=>{editor.focus();editor.select();updateEditorChrome();},
   stockSetup:openStockDialog,offsetSetup:openOffsetDialog,toolSetup:openToolDialog,
-  compile:()=>compileProgram(),play:playProgram,step:()=>{if(runIndex<0)compileProgram({silent:true});stepProgram();},pause:()=>{stopPlayback();setStatus('Simulación pausada');},reset:resetSimulation,
+  compile:()=>compileProgram(),play:playProgram,step:stepOnce,pause:pausePlayback,reset:resetSimulation,
   fitView:()=>machineType==='lathe'?sim.fitView():sim.fitView('scene'),fitStock:()=>machineType==='lathe'?sim.fitView():sim.fitView('stock'),toggleDock,maximizeSimulation,
   showCodes:()=>activateDock('codes'),shortcuts:showShortcuts,about:showAbout,supportProject:()=>window.open('https://ko-fi.com/silverpsycho','_blank','noopener,noreferrer'),home:showHome
 };
@@ -500,16 +626,16 @@ function runAction(name){closeMenus();actions[name]?.();}
 
 function closeMenus(){$$('.menu').forEach(menu=>menu.classList.remove('open'));}
 $$('.menu-trigger').forEach(trigger=>trigger.addEventListener('click',event=>{event.stopPropagation();const menu=trigger.closest('.menu'),wasOpen=menu.classList.contains('open');closeMenus();if(!wasOpen)menu.classList.add('open');}));
-document.addEventListener('click',event=>{if(!event.target.closest('.menu'))closeMenus();const action=event.target.closest('[data-action]')?.dataset.action;if(action)runAction(action);});
+document.addEventListener('click',event=>{if(!event.target.closest('.menu'))closeMenus();if(!event.target.closest('.sim-options'))$('.sim-options')?.removeAttribute('open');const action=event.target.closest('[data-action]')?.dataset.action;if(action)runAction(action);});
 $('#mobileMenuButton')?.addEventListener('click',event=>{event.stopPropagation();const menu=$('#mobileActionMenu');menu?.classList.contains('hidden')?openMobileMenu():closeMobileMenu();});
 $('#mobileMenuClose')?.addEventListener('click',closeMobileMenu);
 $('#mobileActionMenu')?.addEventListener('click',event=>{if(event.target.classList.contains('mobile-menu-backdrop')||event.target.closest('[data-action]'))closeMobileMenu();});
 $$('[data-mobile-view]').forEach(button=>button.addEventListener('click',()=>setMobileView(button.dataset.mobileView)));
-$$('[data-mobile-zoom]').forEach(button=>button.addEventListener('click',()=>{const factor=button.dataset.mobileZoom==='in'?1.22:1/1.22,min=machineType==='lathe'?.25:(sim.viewMode==='2d'?.35:.15),max=machineType==='lathe'?8:(sim.viewMode==='2d'?10:12);sim.camera.zoom=Math.max(min,Math.min(max,(sim.camera.zoom||1)*factor));sim.draw();}));
+$$('[data-mobile-zoom]').forEach(button=>button.addEventListener('click',()=>{const factor=button.dataset.mobileZoom==='in'?1.22:1/1.22;if(machineType==='lathe')sim.camera.zoom=sim.clampZoom((sim.camera.zoom||1)*factor);else{const min=sim.viewMode==='2d'?.35:.15,max=sim.viewMode==='2d'?10:12;sim.camera.zoom=Math.max(min,Math.min(max,(sim.camera.zoom||1)*factor));}sim.draw();}));
 $$('.machine-switch button').forEach(button=>button.addEventListener('click',()=>switchMachine(button.dataset.machine)));
 
 editor.addEventListener('input',()=>{if(!history.locked)scheduleHistory();afterEditorChange(true);});
-editor.addEventListener('scroll',()=>{lineNumbers.scrollTop=editor.scrollTop;hideAutocomplete();});
+editor.addEventListener('scroll',()=>{syncEditorScroll();hideAutocomplete();});
 editor.addEventListener('click',updateEditorChrome);editor.addEventListener('keyup',updateEditorChrome);editor.addEventListener('select',updateEditorChrome);
 editor.addEventListener('keydown',event=>{
   if(event.ctrlKey&&event.code==='Space'){event.preventDefault();showAutocomplete(true);return;}
@@ -522,6 +648,7 @@ editor.addEventListener('keydown',event=>{
   if(event.key==='Tab'){event.preventDefault();commitHistory();editor.setRangeText('  ',editor.selectionStart,editor.selectionEnd,'end');commitHistory();afterEditorChange(false);}
 });
 $('#autocomplete').addEventListener('mousedown',event=>{const item=event.target.closest('.ac-item');if(item){event.preventDefault();activeAc=+item.dataset.acIndex;acceptAutocomplete();}});
+$('#diagnostics').addEventListener('click',event=>{const item=event.target.closest('[data-line]');if(!item)return;if(isMobileViewport())setMobileView('editor',{resize:false});selectEditorLine(+item.dataset.line||1);});
 
 $$('[data-home-action]').forEach(button=>button.addEventListener('click',()=>{const kind=button.dataset.homeAction,machine=button.dataset.homeMachine;if(kind==='new')homeNewProject(machine);else homeOpen(kind,machine);}));
 $('#programName').addEventListener('click',event=>{event.stopPropagation();beginFileNameEdit();});
@@ -535,7 +662,7 @@ $('#showRapids').addEventListener('change',event=>{sim.showRapids=event.target.c
 $('#showCuts').addEventListener('change',event=>{sim.showCuts=event.target.checked;sim.draw();queueAutosave();});
 $('#showGrid').addEventListener('change',event=>{sim.showGrid=event.target.checked;sim.draw();});
 $('#showTable').addEventListener('change',event=>{sim.showTable=event.target.checked;sim.draw();});
-$('#renderQuality').addEventListener('change',event=>{if(machineType==='lathe')latheConfig.stock.renderQuality=event.target.value;else config.workspace.renderQuality=event.target.value;sim.setRenderQuality(event.target.value);sim.draw();queueAutosave();});
+$('#renderQuality').addEventListener('change',event=>{cancelSimulationWork();if(machineType==='lathe')latheConfig.stock.renderQuality=event.target.value;else config.workspace.renderQuality=event.target.value;sim.setRenderQuality(event.target.value);sim.draw();queueAutosave();});
 $('#codeFilter').addEventListener('input',renderDictionary);$('#categoryFilter').addEventListener('change',renderDictionary);$('#supportFilter').addEventListener('change',renderDictionary);$('#variableFilter').addEventListener('input',renderVariables);
 $('#codeDictionary').addEventListener('click',event=>{const card=event.target.closest('.code-card');if(!card)return;const code=activeCodes()[+card.dataset.codeIndex];insertAtCursor(t(code.insert||code.example));toast(`${code.code} insertado`);});
 $('#addVariableBtn').addEventListener('click',()=>$('#variableDialog').showModal());
@@ -593,11 +720,10 @@ window.addEventListener('keydown',event=>{
   if(ctrl&&key==='j'){event.preventDefault();toggleDock();return;}
   if(event.altKey&&event.shiftKey&&key==='f'){event.preventDefault();formatCode();return;}
   if(event.key==='F5'){event.preventDefault();playProgram();return;}
-  if(event.key==='F7'){event.preventDefault();compileProgram();return;}
   if(event.key==='F10'){event.preventDefault();actions.step();return;}
   if(event.shiftKey&&event.key==='F11'){event.preventDefault();maximizeSimulation();return;}
   if(!editing&&key==='f'){sim.fitView();return;}
-  if(event.key==='Escape'){closeMenus();hideAutocomplete();}
+  if(event.key==='Escape'){closeMenus();hideAutocomplete();$('.sim-options')?.removeAttribute('open');}
 });
 
 document.addEventListener('cncvexa:languagechange',()=>{
@@ -622,6 +748,6 @@ document.addEventListener('cncvexa:languagechange',()=>{
   sim.draw();
 });
 window.addEventListener('resize',()=>{if(!isMobileViewport())closeMobileMenu();sim.resize();});
-window.addEventListener('beforeunload',event=>{saveLocal(false);if(dirty){event.preventDefault();event.returnValue='';}});
+window.addEventListener('beforeunload',event=>{simulationWorker.destroy();saveLocal(false);if(dirty){event.preventDefault();event.returnValue='';}});
 
-repopulateCategories();editor.value='';resetHistory('');updateEditorChrome();syncWorkspaceConfig(DEFAULT_WORKSPACE);setStockForm(config.workspace);loadToolFields();applyStock({compile:false,close:false,notify:false});millSim.setCurrentTool(config.tools[3]);latheSim.configure(latheConfig.stock);latheSim.setCurrentTool(latheConfig.tools[1]);renderDictionary();compileProgram({silent:true});setDirty(false);setDisplayMode('3d');setView('iso');updateSummaries();setStatus('Preparado');if(!handleExternalLaunch())showHome();
+repopulateCategories();editor.value='';resetHistory('');updateEditorChrome();renderSyntaxHighlight();syncWorkspaceConfig(DEFAULT_WORKSPACE);setStockForm(config.workspace);loadToolFields();applyStock({compile:false,close:false,notify:false});millSim.setCurrentTool(config.tools[3]);latheSim.configure(latheConfig.stock);latheSim.setCurrentTool(latheConfig.tools[1]);renderDictionary();compileProgram({silent:true});setDirty(false);setDisplayMode('3d');setView('iso');updateSummaries();updateRunMonitor('ready');setStatus('Preparado');if(!handleExternalLaunch())showHome();

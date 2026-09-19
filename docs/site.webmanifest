@@ -1,10 +1,28 @@
 {
+  "id": "./",
   "name": "CNCVexa Simulator",
   "short_name": "CNCVexa",
+  "description": "Editor y simulador CNC de fresadora y torno con visualización 2D y 3D.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#050b11",
-  "theme_color": "#09131d",
+  "background_color": "#070a0c",
+  "theme_color": "#0a0f12",
+  "categories": ["education", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Nuevo programa de fresa",
+      "short_name": "Nueva fresa",
+      "url": "./?action=new&machine=mill",
+      "icons": [{"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"}]
+    },
+    {
+      "name": "Nuevo programa de torno",
+      "short_name": "Nuevo torno",
+      "url": "./?action=new&machine=lathe",
+      "icons": [{"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"}]
+    }
+  ],
   "icons": [
     {
       "src": "assets/icon-192.png",

@@ -10,6 +10,7 @@ export class StockSimulator{
     this.view='free';
     this.viewMode='3d';
     this.renderQuality='medium';
+    this.playbackActive=false;
     this.showRapids=true;
     this.showCuts=true;
     this.showGrid=true;
@@ -21,6 +22,7 @@ export class StockSimulator{
     this.camera={yaw:-45*Math.PI/180,pitch:35*Math.PI/180,zoom:1,panX:0,panY:0};
     this.drag=null;
     this.cutMarks=[];
+    this.hasCuts=false;
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(canvas);
     this.bindCameraControls();
@@ -30,23 +32,37 @@ export class StockSimulator{
 
   qualitySettings(level=this.renderQuality){
     return {
-      low:{tileBudget:1200,circleSegments:12,pathStep:1.0,markLimit:220},
-      medium:{tileBudget:3200,circleSegments:18,pathStep:.65,markLimit:360},
-      high:{tileBudget:6800,circleSegments:28,pathStep:.38,markLimit:520},
-      ultra:{tileBudget:12500,circleSegments:42,pathStep:.24,markLimit:700}
+      low:{tileBudget:900,circleSegments:12,pathStep:1.0,markLimit:220},
+      medium:{tileBudget:2400,circleSegments:18,pathStep:.65,markLimit:360},
+      high:{tileBudget:6000,circleSegments:28,pathStep:.38,markLimit:520},
+      ultra:{tileBudget:9000,circleSegments:42,pathStep:.24,markLimit:700}
     }[level]||{tileBudget:3200,circleSegments:18,pathStep:.65,markLimit:360};
   }
 
+  displayQualitySettings(){
+    return this.qualitySettings(this.renderQuality);
+  }
+
   setActive(value=true){this.active=!!value;if(this.active)this.resize();}
+  setPlaybackActive(value=false){this.playbackActive=!!value;}
 
   bindCameraControls(){
     this.canvas.addEventListener('contextmenu',e=>{if(this.active)e.preventDefault();});
     this.canvas.addEventListener('pointerdown',e=>{
+      if(!this.active)return;
       this.canvas.setPointerCapture(e.pointerId);
+      if(e.pointerType==='touch'){
+        this.touchPoints??=new Map();this.touchPoints.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        if(this.touchPoints.size>=2){const [a,b]=[...this.touchPoints.values()];this.pinchDistance=Math.hypot(a.x-b.x,a.y-b.y);this.drag=null;this.canvas.classList.remove('dragging');return;}
+      }
       this.drag={x:e.clientX,y:e.clientY,mode:this.viewMode==='2d'?'pan':((e.button===2||e.shiftKey||e.ctrlKey)?'pan':'rotate')};
       this.canvas.classList.add('dragging');
     });
     this.canvas.addEventListener('pointermove',e=>{
+      if(e.pointerType==='touch'&&this.touchPoints?.has(e.pointerId)){
+        this.touchPoints.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        if(this.touchPoints.size>=2){const [a,b]=[...this.touchPoints.values()],distance=Math.hypot(a.x-b.x,a.y-b.y),min=this.viewMode==='2d'?.35:.15,max=this.viewMode==='2d'?10:12;if(this.pinchDistance>0)this.camera.zoom=clamp(this.camera.zoom*(distance/this.pinchDistance),min,max);this.pinchDistance=distance;this.draw();return;}
+      }
       if(!this.drag)return;
       const dx=e.clientX-this.drag.x,dy=e.clientY-this.drag.y;
       this.drag.x=e.clientX;this.drag.y=e.clientY;
@@ -60,7 +76,7 @@ export class StockSimulator{
       }
       this.draw();
     });
-    const release=()=>{this.drag=null;this.canvas.classList.remove('dragging');};
+    const release=e=>{if(e?.pointerType==='touch'){this.touchPoints?.delete(e.pointerId);if((this.touchPoints?.size||0)<2)this.pinchDistance=0;}this.drag=null;this.canvas.classList.remove('dragging');};
     this.canvas.addEventListener('pointerup',release);
     this.canvas.addEventListener('pointercancel',release);
     this.canvas.addEventListener('wheel',e=>{
@@ -81,13 +97,14 @@ export class StockSimulator{
     this.depth=new Float32Array(this.nx*this.ny);
     this.depth.fill(0);
     this.cutMarks=[];
+    this.hasCuts=false;
     this.path=[];
     this.current=-1;
     this.toolPos={x:0,y:0,z:Math.max(100,this.stockBounds().maxZ+50)};
     this.fitView(this.viewMode==='2d'?'stock':'scene',false);
   }
 
-  resetCut(){this.depth.fill(0);this.cutMarks=[];this.current=-1;this.toolPos={x:0,y:0,z:Math.max(100,this.stockBounds().maxZ+50)};this.draw();}
+  resetCut(){this.depth.fill(0);this.cutMarks=[];this.hasCuts=false;this.current=-1;this.toolPos={x:0,y:0,z:Math.max(100,this.stockBounds().maxZ+50)};this.draw();}
   setPath(path){this.path=path||[];this.current=-1;this.draw();}
   setCurrentTool(tool={}){this.currentTool={...this.currentTool,...tool};this.draw();}
   getCamera(){return {...this.camera,view:this.view,focusTarget:this.focusTarget};}
@@ -136,15 +153,21 @@ export class StockSimulator{
     if(redraw)this.draw();
   }
 
-  applyStep(step){
+  applyStep(step,redraw=true){
+    const options=arguments[2]||{};
     if(!step||step.kind!=='move')return;
     this.current++;
     this.toolPos={...step.to};
     this.currentTool={...this.currentTool,diameter:step.diameter||this.currentTool.diameter,length:step.toolLength||this.currentTool.length,type:step.toolType||this.currentTool.type,name:step.toolName||this.currentTool.name,angle:step.toolAngle||this.currentTool.angle};
-    if(step.cut)this.cutSegment(step.from,step.to,this.currentTool);
+    if(step.cut&&!options.skipCut)this.cutSegment(step.from,step.to,this.currentTool);
     const drillingCycle=/^G(?:73|74|76|8[1-9])$/.test(step.cycle||''),verticalDown=Math.hypot(step.to.x-step.from.x,step.to.y-step.from.y)<=Math.max(.02,(this.currentTool.diameter||10)*.04)&&step.to.z<step.from.z;
     if(drillingCycle&&verticalDown)this.registerCutMark(step.to.x,step.to.y,Math.max(.1,(this.currentTool.diameter||10)/2),step.to.z,this.currentTool);
-    this.draw();
+    if(redraw)this.draw();
+  }
+
+  applyMaterialDeltas(indices,values){
+    for(let i=0;i<indices.length;i++)this.depth[indices[i]]=values[i];
+    if(indices.length)this.hasCuts=true;
   }
 
   cutterSurfaceZ(z,distance,tool,radius){
@@ -168,19 +191,20 @@ export class StockSimulator{
   }
 
   cutSegment(a,b,tool){
-    const bounds=this.stockBounds(),profile=this.qualitySettings(),len=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),count=Math.max(1,Math.ceil(len/(this.cfg.resolution*profile.pathStep))),r=Math.max(.1,(tool.diameter||10)/2);
+    const bounds=this.stockBounds(),profile=this.qualitySettings(),len=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),count=Math.max(1,Math.ceil(len/(this.cfg.resolution*profile.pathStep))),r=Math.max(.1,(tool.diameter||10)/2),r2=r*r,type=tool.type||'flat',flat=type==='flat'||type==='face';
     for(let s=0;s<=count;s++){
       const t=s/count,x=a.x+(b.x-a.x)*t,y=a.y+(b.y-a.y)*t,z=a.z+(b.z-a.z)*t;
       if(z>bounds.maxZ+r)continue;
+      const flatDepth=flat?Math.min(this.cfg.z,Math.max(0,bounds.maxZ-z)):0;
       const minI=Math.max(0,Math.floor((x-r-bounds.minX)/this.cfg.resolution));
       const maxI=Math.min(this.nx-1,Math.ceil((x+r-bounds.minX)/this.cfg.resolution));
       const minJ=Math.max(0,Math.floor((y-r-bounds.minY)/this.cfg.resolution));
       const maxJ=Math.min(this.ny-1,Math.ceil((y+r-bounds.minY)/this.cfg.resolution));
       for(let j=minJ;j<=maxJ;j++)for(let i=minI;i<=maxI;i++){
-        const px=bounds.minX+i*this.cfg.resolution,py=bounds.minY+j*this.cfg.resolution,distance=Math.hypot(px-x,py-y);
-        if(distance<=r){
-          const surface=this.cutterSurfaceZ(z,distance,tool,r),d=Math.min(this.cfg.z,Math.max(0,bounds.maxZ-surface)),idx=j*this.nx+i;
-          if(d>this.depth[idx])this.depth[idx]=d;
+        const px=bounds.minX+i*this.cfg.resolution,py=bounds.minY+j*this.cfg.resolution,dx=px-x,dy=py-y,distance2=dx*dx+dy*dy;
+        if(distance2<=r2){
+          const d=flat?flatDepth:Math.min(this.cfg.z,Math.max(0,bounds.maxZ-this.cutterSurfaceZ(z,Math.sqrt(distance2),tool,r))),idx=j*this.nx+i;
+          if(d>this.depth[idx]){this.depth[idx]=d;if(d>.001)this.hasCuts=true;}
         }
       }
     }
@@ -188,7 +212,7 @@ export class StockSimulator{
 
   resize(){
     if(!this.active)return;
-    const r=this.canvas.getBoundingClientRect(),limit={low:1,medium:1.5,high:2,ultra:2.5}[this.renderQuality]||1.5,dpr=Math.min(limit,window.devicePixelRatio||1);
+    const r=this.canvas.getBoundingClientRect(),limit={low:1,medium:1.5,high:1.75,ultra:2}[this.renderQuality]||1.5,dpr=Math.min(limit,window.devicePixelRatio||1);
     this.canvas.width=Math.max(1,Math.round(r.width*dpr));
     this.canvas.height=Math.max(1,Math.round(r.height*dpr));
     this.ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -402,7 +426,11 @@ export class StockSimulator{
   }
 
   drawStock(){
-    const c=this.ctx,b=this.stockBounds(),profile=this.qualitySettings(),cells=(this.nx-1)*(this.ny-1),stride=Math.max(1,Math.ceil(Math.sqrt(cells/profile.tileBudget))),faces=[],removedLimit=this.cfg.z-Math.max(.08,this.cfg.resolution*.12);
+    const c=this.ctx,b=this.stockBounds(),profile=this.displayQualitySettings(),cells=(this.nx-1)*(this.ny-1),stride=Math.max(1,Math.ceil(Math.sqrt(cells/profile.tileBudget))),faces=[],removedLimit=this.cfg.z-Math.max(.08,this.cfg.resolution*.12);
+    if(!this.hasCuts){
+      this.drawBox(b,{top:'#d7ad40',front:'#9b7429',right:'#84601f',back:'#76551e',left:'#8c6724',bottom:'#493513'},'rgba(255,225,137,.28)');
+      const o=this.cfg.position,p=this.projection(o.x,o.y,b.maxZ+.3);c.fillStyle='#fff2a0';c.beginPath();c.arc(p.x,p.y,3.5,0,Math.PI*2);c.fill();c.font='700 9px system-ui';c.fillText(t('ORIGEN PIEZA'),p.x+7,p.y-6);return;
+    }
     const isRemoved=(i,j)=>this.depth[clamp(j,0,this.ny-1)*this.nx+clamp(i,0,this.nx-1)]>=removedLimit;
     const averageNormal=(normals)=>{const n=normals.reduce((acc,v)=>({x:acc.x+v.x,y:acc.y+v.y,z:acc.z+v.z}),{x:0,y:0,z:0}),length=Math.hypot(n.x,n.y,n.z)||1;return{x:n.x/length,y:n.y/length,z:n.z/length};};
     const pushSurface=(pts,normals,avgDepth)=>faces.push({pts,color:this.surfaceColor(averageNormal(normals),avgDepth/Math.max(.001,this.cfg.z)),stroke:null,depth:pts.reduce((sum,p)=>sum+this.rawProjection(p).depth,0)/pts.length});
@@ -467,7 +495,7 @@ export class StockSimulator{
   }
 
   drawCavity3D(mark){
-    const b=this.stockBounds(),profile=this.qualitySettings(),segments=profile.circleSegments,topZ=b.maxZ+.12,bottomZ=Math.max(b.minZ,mark.bottomZ),isPointed=mark.toolType==='drill'||mark.toolType==='chamfer',halfAngle=clamp((mark.toolAngle||90)/2,8,88)*Math.PI/180,tipRise=isPointed?Math.min(mark.depth*.42,mark.radius/Math.tan(halfAngle)):0,wallBottom=Math.min(topZ,Math.max(bottomZ,bottomZ+tipRise)),walls=[];
+    const b=this.stockBounds(),profile=this.displayQualitySettings(),segments=profile.circleSegments,topZ=b.maxZ+.12,bottomZ=Math.max(b.minZ,mark.bottomZ),isPointed=mark.toolType==='drill'||mark.toolType==='chamfer',halfAngle=clamp((mark.toolAngle||90)/2,8,88)*Math.PI/180,tipRise=isPointed?Math.min(mark.depth*.42,mark.radius/Math.tan(halfAngle)):0,wallBottom=Math.min(topZ,Math.max(bottomZ,bottomZ+tipRise)),walls=[];
     this.drawCirclePlane3D(mark.x,mark.y,topZ,mark.radius,segments,'rgba(29,20,9,.94)','rgba(255,226,146,.66)',1.15);
     for(let i=0;i<segments;i++){
       const a1=i/segments*Math.PI*2,a2=(i+1)/segments*Math.PI*2,p1={x:mark.x+Math.cos(a1)*mark.radius,y:mark.y+Math.sin(a1)*mark.radius,z:topZ},p2={x:mark.x+Math.cos(a2)*mark.radius,y:mark.y+Math.sin(a2)*mark.radius,z:topZ},p3={x:p2.x,y:p2.y,z:wallBottom},p4={x:p1.x,y:p1.y,z:wallBottom},mid=(a1+a2)/2,light=.42+.34*Math.max(0,Math.cos(mid+this.camera.yaw));
@@ -497,7 +525,7 @@ export class StockSimulator{
   }
 
   drawCutMarks3D(){
-    const b=this.stockBounds(),profile=this.qualitySettings();
+    const b=this.stockBounds(),profile=this.displayQualitySettings();
     for(const mark of this.cutMarks){
       const inset=Math.min(mark.depth*.15,Math.max(.8,this.cfg.resolution*.45));
       this.drawCirclePlane3D(mark.x,mark.y,b.maxZ-inset,mark.radius,profile.circleSegments,`rgba(33,22,11,${0.55+clamp(mark.depth/this.cfg.z,0,1)*0.24})`,'rgba(255,221,133,.4)',1.1);
