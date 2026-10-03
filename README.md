@@ -33,6 +33,20 @@ La interfaz también se adapta a teléfonos y tabletas, con navegación móvil e
 
 ---
 
+## Reproducción y detalle
+
+- La velocidad va de **1× a 1000×**. A 1× los movimientos siguen el avance `F`, las unidades y el modo de avance del programa; en torno, X se considera un diámetro. Los rápidos usan un avance del modelo de 12 000 mm/min, independiente de F.
+- **Avance por bloque / F10** ejecuta el bloque siguiente y se detiene al terminarlo. Los segmentos de un arco o ciclo permanecen en el mismo bloque.
+- En 2D se distingue la trayectoria pendiente de la recorrida. Volver a ejecutar después del final repite la animación desde el inicio.
+- Al pasar el cursor sobre una línea 2D se resalta el bloque de trayectoria y aparecen su código y extremos XYZ. Los arcos se resaltan completos.
+- Al pasar el cursor sobre un vértice 2D aparecen su línea, código y coordenadas X, Y y Z en milímetros. Si coinciden varias posiciones, se muestran sus distintos valores de Z y líneas.
+- Los cortadores 3D respetan el diámetro, longitud y ángulo configurados, con surcos helicoidales, punta esférica, punta de broca y plaquitas de planeado. El torno distingue plaquitas de exterior/acabado, ranurado y roscado, barra de mandrinar y broca axial.
+- Básico, Normal, Alto y Máximo cambian la malla de la pieza y de las herramientas; Máximo conserva todas las muestras de material y Básico usa una malla más ligera y sombreado por caras. Cambiar el detalle conserva la pieza mecanizada.
+- El detalle predeterminado es **Máximo**: resolución de remoción de 0.5 mm en fresa y perfil de 0.25 mm en torno. Las resoluciones de proyectos guardados se conservan.
+- La remoción se calcula en un Worker mediante lotes limitados por tiempo. WebGL 2 dibuja la superficie y herramientas con volumen; si no está disponible, se utiliza el renderizador de Canvas.
+
+El tiempo de movimiento modela el avance programado; no incluye aceleración de ejes ni todos los tiempos auxiliares de una máquina concreta. La fresadora conserva un modelo de altura de la superficie, por lo que no representa socavados laterales ni cavidades internas cerradas.
+
 ## Modos de simulación
 
 ### Fresadora
@@ -206,6 +220,16 @@ No es necesario instalar Python ni mantener un servidor encendido.
 ### Instalar como aplicación
 
 CNCVexa incluye manifiesto y soporte sin conexión. En Chrome o Edge puede instalarse desde el icono **Instalar CNCVexa** de la barra de direcciones; en Android aparece en **Instalar aplicación** o **Agregar a pantalla principal**.
+
+---
+
+## Uso local
+
+Extrae el ZIP completo. En Windows, abre `Iniciar CNCVexa.bat` en el paquete de la aplicación o `Iniciar_CNCVexa.bat` en el repositorio. Se necesita Python 3.8 o posterior.
+
+El lanzador sirve la carpeta de esa copia, elige un puerto disponible y abre el navegador cuando el servidor está listo. La ventana del servidor debe permanecer abierta. También puedes ejecutar `python iniciar_cncvexa.py` desde la carpeta del lanzador.
+
+La copia local evita la caché de versiones anteriores; el soporte sin conexión se conserva en el sitio publicado.
 
 ---
 

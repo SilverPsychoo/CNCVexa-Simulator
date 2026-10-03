@@ -1,8 +1,9 @@
 import {STEP_FIELDS,STEP_STRIDE,TOOL_CODES} from './simulation-worker.js';
+import {movementDuration} from './playback.js';
 
 const number=value=>Number.isFinite(Number(value))?Number(value):0;
 
-function encodedSteps(machine,steps){
+export function encodedSteps(machine,steps){
   const data=new Float64Array(steps.length*STEP_STRIDE);
   let toolSize=machine==='lathe'?.8:10,toolType=machine==='lathe'?TOOL_CODES.od:TOOL_CODES.flat,toolAngle=90;
   for(let index=0;index<steps.length;index++){
@@ -23,6 +24,7 @@ function encodedSteps(machine,steps){
     data[base+STEP_FIELDS.toolSize]=Math.max(.001,toolSize);
     data[base+STEP_FIELDS.toolType]=toolType;
     data[base+STEP_FIELDS.toolAngle]=toolAngle;
+    data[base+STEP_FIELDS.duration]=movementDuration(step,machine);
   }
   return data;
 }
@@ -50,10 +52,10 @@ export class SimulationWorkerClient{
     }catch(error){this.available=false;this.pending=false;this.onError?.(error);}
   }
 
-  start({simulationId,machine,steps,cursor,config,depth,profile,innerProfile}){
+  start({simulationId,machine,steps,cursor,progress=0,config,depth,profile,innerProfile}){
     if(!this.available||!this.worker)return false;
     this.simulationId=simulationId;this.pending=false;
-    const encoded=encodedSteps(machine,steps),message={type:'start',simulationId,machine,cursor,config,stepsBuffer:encoded.buffer},transfer=[encoded.buffer];
+    const encoded=encodedSteps(machine,steps),message={type:'start',simulationId,machine,cursor,progress,config,stepsBuffer:encoded.buffer},transfer=[encoded.buffer];
     if(depth){const copy=depth.slice();message.depthBuffer=copy.buffer;transfer.push(copy.buffer);}
     if(profile){const copy=profile.slice();message.profileBuffer=copy.buffer;transfer.push(copy.buffer);}
     if(innerProfile){const copy=innerProfile.slice();message.innerProfileBuffer=copy.buffer;transfer.push(copy.buffer);}
@@ -61,9 +63,9 @@ export class SimulationWorkerClient{
     return true;
   }
 
-  run({simulationId,budgetMs,stepLimit,dirtyLimit=16000}){
+  run({simulationId,budgetMs,stepLimit,dirtyLimit=16000,simulatedMs,stopIndex}){
     if(!this.available||!this.worker||this.pending||simulationId!==this.simulationId)return false;
-    this.pending=true;this.worker.postMessage({type:'run',simulationId,budgetMs,stepLimit,dirtyLimit});return true;
+    this.pending=true;this.worker.postMessage({type:'run',simulationId,budgetMs,stepLimit,dirtyLimit,simulatedMs,stopIndex});return true;
   }
 
   pause(simulationId=this.simulationId){if(this.worker&&simulationId===this.simulationId)this.worker.postMessage({type:'pause',simulationId});}

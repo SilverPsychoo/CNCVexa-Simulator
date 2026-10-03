@@ -1,3 +1,6 @@
+import {buildLatheCutterMesh} from './cutter-mesh.js';
+import {drawPathHighlight} from './vertex-inspector.js';
+import {SurfaceRenderer} from './surface-renderer.js';
 const t=value=>globalThis.CNCVexaI18n?.translateString(String(value))??String(value);
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -7,15 +10,17 @@ export class LatheSimulator{
   constructor(canvas){
     this.canvas=canvas;
     this.ctx=canvas.getContext('2d');
+    this.surfaceRenderer=new SurfaceRenderer();
     this.active=false;
     this.viewMode='3d';
+    this.showToolpath=true;
     this.showRapids=true;
     this.showCuts=true;
     this.showGrid=true;
     this.showTable=true;
     this.showTurret=true;
     this.showCollisions=true;
-    this.renderQuality='high';
+    this.renderQuality='ultra';
     this.playbackActive=false;
     this.current=-1;
     this.path=[];
@@ -33,13 +38,13 @@ export class LatheSimulator{
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(canvas);
     this.bindControls();
-    this.configure({units:'mm',diameter:60,length:120,bore:0,stickout:100,chuckLength:30,resolution:1,renderQuality:'high'});
+    this.configure({units:'mm',diameter:60,length:120,bore:0,stickout:100,chuckLength:30,resolution:.25,renderQuality:'ultra'});
   }
 
   setActive(value=true){this.active=!!value;if(this.active)this.resize();}
   setPlaybackActive(value=false){this.playbackActive=!!value;}
-  setDisplayMode(mode='3d'){this.viewMode=mode==='2d'?'2d':'3d';this.draw();}
-  setRenderQuality(level='high'){this.renderQuality=['low','medium','high','ultra'].includes(level)?level:'high';this.draw();}
+  setDisplayMode(mode='3d'){this.hoveredPath=null;this.viewMode=mode==='2d'?'2d':'3d';this.draw();}
+  setRenderQuality(level='ultra'){this.renderQuality=['low','medium','high','ultra'].includes(level)?level:'ultra';this.cfg.renderQuality=this.renderQuality;this.resize();}
   getCamera(){return{...this.camera,target:this.camera.target?{...this.camera.target}:null,position:this.camera.position?{...this.camera.position}:null,up:{...this.camera.up},viewMode:this.viewMode};}
   setCamera(camera={}){
     Object.assign(this.camera,camera);
@@ -105,7 +110,7 @@ export class LatheSimulator{
       stickout,
       chuckLength:Math.max(5,+cfg.chuckLength||30),
       resolution:Math.max(.2,+cfg.resolution||1),
-      renderQuality:cfg.renderQuality||'high'
+      renderQuality:cfg.renderQuality||'ultra'
     };
     this.renderQuality=this.cfg.renderQuality;
     this.count=Math.ceil(this.cfg.length/this.cfg.resolution)+1;
@@ -115,6 +120,7 @@ export class LatheSimulator{
     this.innerProfile.fill(this.cfg.bore/2);
     this.path=[];
     this.current=-1;
+    this.motion=null;
     this.toolPos={x:this.cfg.diameter+20,z:5};
     this.collisionMarkers=[];
     this.threadSegments=[];
@@ -126,13 +132,14 @@ export class LatheSimulator{
     this.profile.fill(this.cfg.diameter/2);
     this.innerProfile.fill(this.cfg.bore/2);
     this.current=-1;
+    this.motion=null;
     this.toolPos={x:this.cfg.diameter+20,z:5};
     this.collisionMarkers=[];
     this.threadSegments=[];
     this.draw();
   }
 
-  setPath(path){this.path=path||[];this.current=-1;this.draw();}
+  setPath(path){this.path=path||[];this.hoveredPath=null;this.current=-1;this.draw();}
   fitView(redraw=true){
     this.camera.zoom=1;this.camera.panX=0;this.camera.panY=0;
     if(this.viewMode==='3d'){
@@ -148,7 +155,7 @@ export class LatheSimulator{
   applyStep(step,redraw=true){
     const options=arguments[2]||{};
     if(!step)return;
-    this.current++;
+    this.current=options.index??(this.current+1);
     if(step.kind==='toolchange'){
       this.activeToolNumber=step.toTool||step.tool||0;
       this.activeOffset=step.offset||this.activeToolNumber;
@@ -163,8 +170,8 @@ export class LatheSimulator{
     this.activeOffset=step.offset||this.activeOffset;
     this.currentTool={...this.currentTool,type:step.toolType||this.currentTool.type,name:step.toolName||this.currentTool.name,noseRadius:step.noseRadius??this.currentTool.noseRadius,insertWidth:step.insertWidth||this.currentTool.insertWidth,orientation:step.orientation||this.currentTool.orientation};
     if(step.cut&&!options.skipCut)this.cutSegment(step.from,step.to,this.currentTool);
-    if(step.cycle==='G76'&&step.thread)this.threadSegments.push({...step});
-    if(step.collisions?.length)this.collisionMarkers.push({point:{...step.to},line:step.line,issues:step.collisions});
+    if(!options.partial&&step.cycle==='G76'&&step.thread)this.threadSegments.push({...step});
+    if(!options.partial&&step.collisions?.length)this.collisionMarkers.push({point:{...step.to},line:step.line,issues:step.collisions});
     if(redraw)this.draw();
   }
 
@@ -201,7 +208,7 @@ export class LatheSimulator{
   }
 
   cutSegment(a,b,tool){
-    const len=Math.hypot(b.x-a.x,b.z-a.z),samples=Math.max(1,Math.ceil(len/Math.max(.25,this.cfg.resolution*.45))),nose=Math.max(.1,tool.noseRadius||.8);
+    const len=Math.hypot(b.x-a.x,b.z-a.z),samples=Math.max(1,Math.ceil(len/Math.max(.05,this.cfg.resolution*.45))),nose=Math.max(.1,tool.noseRadius||.8);
     for(let s=0;s<=samples;s++){
       const t=s/samples,x=lerp(a.x,b.x,t),z=lerp(a.z,b.z,t),r=Math.abs(x)/2;
       if(z>nose||z<-this.cfg.length-nose)continue;
@@ -218,7 +225,7 @@ export class LatheSimulator{
 
   resize(){
     if(!this.active)return;
-    const r=this.canvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+    const r=this.canvas.getBoundingClientRect(),limit={low:1,medium:1.5,high:1.75,ultra:2}[this.renderQuality]||2,dpr=Math.min(limit,window.devicePixelRatio||1);
     this.canvas.width=Math.max(1,Math.round(r.width*dpr));
     this.canvas.height=Math.max(1,Math.round(r.height*dpr));
     this.ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -227,7 +234,7 @@ export class LatheSimulator{
     this.draw();
   }
 
-  quality(){return{low:{rings:12,step:4},medium:{rings:18,step:3},high:{rings:28,step:2},ultra:{rings:40,step:1}}[this.renderQuality]||{rings:28,step:2};}
+  quality(){return{low:{rings:12,step:Math.max(1,Math.round(4/this.cfg.resolution))},medium:{rings:24,step:Math.max(1,Math.round(2/this.cfg.resolution))},high:{rings:40,step:Math.max(1,Math.round(1/this.cfg.resolution))},ultra:{rings:64,step:1}}[this.renderQuality]||{rings:28,step:2};}
   chuckFaceZ(){return-Math.min(this.cfg.stickout,this.cfg.length);}
   exposedCount(){return Math.min(this.count,Math.ceil(this.cfg.stickout/this.cfg.resolution)+1);}
   draw(){if(!this.active||!this.w||!this.h)return;if(this.viewMode==='2d')this.draw2D();else this.draw3D();}
@@ -259,11 +266,12 @@ export class LatheSimulator{
     this.drawLatheBed2D();
     this.drawWorkpiece2D();
     if(this.showTable)this.drawChuck2D();
-    this.drawPath2D();
+    if(this.showToolpath)this.drawPath2D();
     if(this.showTurret)this.drawTurret2D();
     this.drawTool2D();
     if(this.showCollisions)this.drawCollisions2D();
     c.fillStyle='#1b3441';c.font='700 12px system-ui';c.fillText(t('Perfil X–Z · X programado en diámetro'),18,24);c.font='10px system-ui';c.fillStyle='#5f7f8d';c.fillText(t('Z0 = cara frontal · el plato sujeta la barra en Z negativo'),18,41);
+    drawPathHighlight(this);
   }
 
   drawLatheBed2D(){
@@ -300,8 +308,9 @@ export class LatheSimulator{
     const c=this.ctx;
     for(let i=0;i<this.path.length;i++){
       const s=this.path[i];if(s.kind!=='move'||(s.type==='G00'&&!this.showRapids)||(s.type!=='G00'&&!this.showCuts))continue;
-      const a=this.project2D(s.from.z,s.from.x/2),b=this.project2D(s.to.z,s.to.x/2),done=i<=this.current;
+      const a=this.project2D(s.from.z,s.from.x/2),b=this.project2D(s.to.z,s.to.x/2),done=i<this.current||(i===this.current&&!this.motion);
       c.strokeStyle=done?(s.type==='G00'?'#3d9fca':'#0e8f56'):(s.type==='G00'?'rgba(61,159,202,.35)':'rgba(20,60,70,.35)');c.setLineDash(s.type==='G00'?[6,5]:[]);c.lineWidth=i===this.current?2.8:1.4;c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+      if(this.motion?.index===i){const end=this.project2D(this.toolPos.z,this.toolPos.x/2);c.strokeStyle=s.type==='G00'?'#3d9fca':'#0e8f56';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(end.x,end.y);c.stroke();}
     }
     c.setLineDash([]);
   }
@@ -444,6 +453,7 @@ export class LatheSimulator{
 
   flushFaces(){
     this.collectFaces=false;
+    if(this.surfaceRenderer?.available&&this.surfaceRenderer.renderLathe(this,this.faceQueue)){this.faceQueue.length=0;return;}
     this.faceQueue.sort((a,b)=>b.depth-a.depth);
     for(const face of this.faceQueue)this.paintCameraPolygon(face.cameraPoints,face.fill,face.stroke,face.width);
     this.faceQueue.length=0;
@@ -485,14 +495,14 @@ export class LatheSimulator{
     this.activeFrame=this.updateCameraPose();
     this.faceQueue=[];this.collectFaces=true;
     this.drawMachineBed3D();
-    this.drawWorkpiece3D();
+    if(!this.surfaceRenderer?.available)this.drawWorkpiece3D();
     if(this.showTable)this.drawChuck3D();
     if(this.showTurret)this.drawTurret3D();
     this.drawTool3D();
     this.flushFaces();
     this.drawMachiningHighlights3D();
     this.drawThread3D();
-    this.drawPath3D();
+    if(this.showToolpath)this.drawPath3D();
     if(this.showCollisions)this.drawCollisions3D();
     this.drawAxis3D();
     this.activeFrame=null;
@@ -557,7 +567,14 @@ export class LatheSimulator{
   }
 
   drawPath3D(){
-    const c=this.ctx;for(let i=0;i<this.path.length;i++){const s=this.path[i];if(s.kind!=='move'||(s.type==='G00'&&!this.showRapids)||(s.type!=='G00'&&!this.showCuts))continue;const a=this.project3D({x:s.from.z,y:s.from.x/2,z:0}),b=this.project3D({x:s.to.z,y:s.to.x/2,z:0}),done=i<=this.current;c.strokeStyle=done?(s.type==='G00'?'rgba(76,202,255,.85)':'rgba(65,255,159,.95)'):(s.type==='G00'?'rgba(76,202,255,.25)':'rgba(220,245,235,.28)');c.setLineDash(s.type==='G00'?[6,5]:[]);c.lineWidth=i===this.current?3:1.3;c.lineCap='round';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();}c.setLineDash([]);c.lineCap='butt';
+    const c=this.ctx;
+    for(let i=0;i<this.path.length;i++){
+      const s=this.path[i];if(s.kind!=='move'||(s.type==='G00'&&!this.showRapids)||(s.type!=='G00'&&!this.showCuts))continue;
+      const a=this.project3D({x:s.from.z,y:s.from.x/2,z:0}),b=this.project3D({x:s.to.z,y:s.to.x/2,z:0}),done=i<this.current||(i===this.current&&!this.motion);
+      c.strokeStyle=done?(s.type==='G00'?'rgba(76,202,255,.85)':'rgba(65,255,159,.95)'):(s.type==='G00'?'rgba(76,202,255,.25)':'rgba(220,245,235,.28)');c.setLineDash(s.type==='G00'?[6,5]:[]);c.lineWidth=i===this.current?3:1.3;c.lineCap='round';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+      if(this.motion?.index===i){const end=this.project3D({x:this.toolPos.z,y:this.toolPos.x/2,z:0});c.strokeStyle=s.type==='G00'?'rgba(76,202,255,.85)':'rgba(65,255,159,.95)';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(end.x,end.y);c.stroke();}
+    }
+    c.setLineDash([]);c.lineCap='butt';
   }
 
   drawThread3D(){
@@ -602,10 +619,14 @@ export class LatheSimulator{
   }
 
   drawTool3D(){
-    const layout=this.toolLayout(),width=Math.max(5,layout.holderWidth*1.28),vector={x:layout.back.x-layout.tip.x,y:layout.back.y-layout.tip.y,z:layout.back.z-layout.tip.z},length=Math.hypot(vector.x,vector.y,vector.z)||1,direction={x:vector.x/length,y:vector.y/length,z:vector.z/length},insertLength=Math.max(5,width*1.15),insertEnd={x:layout.tip.x+direction.x*insertLength,y:layout.tip.y+direction.y*insertLength,z:layout.tip.z+direction.z*insertLength};
-    this.drawPrism(insertEnd,layout.back,width,width*.78,{top:'#c8d3d7',side:'#53656d',front:'#81949c'});
-    const insertColor=layout.type==='thread'?{top:'#f4a64a',side:'#8a4f18',front:'#ffd08a'}:layout.type==='groove'?{top:'#71d0de',side:'#286b76',front:'#b5f3fa'}:layout.type==='drill'?{top:'#dce4e8',side:'#647780',front:'#f5fafc'}:{top:'#ffd21f',side:'#8f7110',front:'#ffea76'};
-    this.drawPrism(layout.tip,insertEnd,width*1.08,width*.9,insertColor);
+    const tool=this.currentTool,segments=this.quality().rings,key=[tool.type,tool.insertWidth,tool.noseRadius,segments].join(':');
+    if(key!==this.toolMeshKey){this.toolMesh=buildLatheCutterMesh(tool,segments);this.toolMeshKey=key;}
+    const tip=this.toolLayout().tip,orientation=Number(tool.orientation)||3,sy=[1,2,5,6].includes(orientation)?-1:1,sx=[4,6,7,8].includes(orientation)?-1:1;
+    for(let i=0;i<this.toolMesh.length;i+=27){
+      const points=[0,9,18].map(k=>({x:tip.x+sx*this.toolMesh[i+k],y:tip.y+sy*this.toolMesh[i+k+1],z:tip.z+this.toolMesh[i+k+2]}));
+      const color=`rgb(${Math.round(this.toolMesh[i+6]*255)},${Math.round(this.toolMesh[i+7]*255)},${Math.round(this.toolMesh[i+8]*255)})`;
+      this.poly(points,color,null,0);
+    }
   }
 
   drawCollisions3D(){

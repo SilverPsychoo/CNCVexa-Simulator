@@ -5,6 +5,8 @@
   const SUPPORTED = new Set(['es', 'en']);
 
   const EN = {
+    'Paso': 'Step',
+    'Paso a paso (F10)': 'Single block (F10)',
     'CNCVexa | Simulador CNC Online de Fresa y Torno': 'CNCVexa | Online CNC Mill and Lathe Simulator',
     'CNCVEXA / SIMULADOR CNC': 'CNCVEXA / CNC SIMULATOR',
     'Seleccionar máquina': 'Select machine',

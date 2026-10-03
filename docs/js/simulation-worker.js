@@ -13,7 +13,7 @@ export const STEP_FIELDS=Object.freeze({
   toolSize:8,
   toolType:9,
   toolAngle:10,
-  reserved:11
+  duration:11
 });
 
 export const TOOL_CODES=Object.freeze({flat:0,face:1,ball:2,drill:3,chamfer:4,od:5,finish:6,groove:7,thread:8,boring:9});
@@ -43,17 +43,17 @@ function markDirty(tracker,index){
   tracker.indices[tracker.count++]=index;
 }
 
-export function createKernel({machine,config,stepsBuffer,cursor=-1,depthBuffer=null,profileBuffer=null,innerProfileBuffer=null}){
+export function createKernel({machine,config,stepsBuffer,cursor=-1,progress=0,depthBuffer=null,profileBuffer=null,innerProfileBuffer=null}){
   const steps=new Float64Array(stepsBuffer);
   if(machine==='lathe'){
     const count=Math.ceil(config.length/config.resolution)+1;
     const profile=profileBuffer?new Float32Array(profileBuffer):new Float32Array(count).fill(config.diameter/2);
     const innerProfile=innerProfileBuffer?new Float32Array(innerProfileBuffer):new Float32Array(count);
-    return{machine,config,steps,cursor,profile,innerProfile,outerDirty:createDirtyTracker(profile.length),innerDirty:createDirtyTracker(innerProfile.length)};
+    return{machine,config,steps,cursor,progress,timeCredit:0,profile,innerProfile,outerDirty:createDirtyTracker(profile.length),innerDirty:createDirtyTracker(innerProfile.length)};
   }
   const nx=Math.ceil(config.x/config.resolution)+1,ny=Math.ceil(config.y/config.resolution)+1;
   const depth=depthBuffer?new Float32Array(depthBuffer):new Float32Array(nx*ny);
-  return{machine:'mill',config,steps,cursor,nx,ny,depth,bounds:millBounds(config),dirty:createDirtyTracker(depth.length)};
+  return{machine:'mill',config,steps,cursor,progress,timeCredit:0,nx,ny,depth,bounds:millBounds(config),dirty:createDirtyTracker(depth.length)};
 }
 
 function setMillDepth(kernel,index,value){
@@ -62,14 +62,15 @@ function setMillDepth(kernel,index,value){
   markDirty(kernel.dirty,index);
 }
 
-function cutMillStep(kernel,base,deadline=Infinity){
+function cutMillStep(kernel,base,deadline=Infinity,targetProgress=1){
   const f=STEP_FIELDS,data=kernel.steps,cfg=kernel.config,bounds=kernel.bounds;
   let job=kernel.activeCut;
   if(!job||job.base!==base){
     const ax=data[base+f.fromX],ay=data[base+f.fromY],az=data[base+f.fromZ],bx=data[base+f.toX],by=data[base+f.toY],bz=data[base+f.toZ],diameter=Math.max(.1,data[base+f.toolSize]||10),radius=diameter/2,type=data[base+f.toolType],angle=data[base+f.toolAngle]||90,length=Math.hypot(bx-ax,by-ay,bz-az),sampleStep=cfg.resolution*cfg.pathStep;
-    job={base,sample:0,count:Math.max(1,Math.ceil(length/sampleStep)),ax,ay,az,bx,by,bz,radius,radius2:radius*radius,type,angle,flat:type===TOOL_CODES.flat||type===TOOL_CODES.face};kernel.activeCut=job;
+    const start=kernel.progress||0,end=targetProgress,count=Math.max(1,Math.ceil(length/sampleStep));
+    job={base,sample:start>0?Math.floor(start*count+1e-8)+1:0,count,lastSample:Math.min(count,Math.floor(end*count+1e-8)),ax,ay,az,bx,by,bz,radius,radius2:radius*radius,type,angle,flat:type===TOOL_CODES.flat||type===TOOL_CODES.face};kernel.activeCut=job;
   }
-  while(job.sample<=job.count){
+  while(job.sample<=job.lastSample){
     if(!job.cells){
       const ratio=job.sample/job.count,x=job.ax+(job.bx-job.ax)*ratio,y=job.ay+(job.by-job.ay)*ratio,z=job.az+(job.bz-job.az)*ratio,radius=job.radius;
       if(z>bounds.maxZ+radius){job.sample++;if((job.sample&31)===0&&now()>=deadline)return false;continue;}
@@ -106,11 +107,11 @@ function setLatheRadius(kernel,index,value,inner){
   markDirty(tracker,index);
 }
 
-function cutLatheStep(kernel,base,deadline=Infinity){
+function cutLatheStep(kernel,base,deadline=Infinity,targetProgress=1){
   const f=STEP_FIELDS,data=kernel.steps,cfg=kernel.config;
   let job=kernel.activeCut;
-  if(!job||job.base!==base){const ax=data[base+f.fromX],az=data[base+f.fromZ],bx=data[base+f.toX],bz=data[base+f.toZ],nose=Math.max(.1,data[base+f.toolSize]||.8),type=data[base+f.toolType],length=Math.hypot(bx-ax,bz-az);job={base,sample:0,samples:Math.max(1,Math.ceil(length/Math.max(.25,cfg.resolution*.45))),ax,az,bx,bz,nose,inner:type===TOOL_CODES.boring||type===TOOL_CODES.drill};kernel.activeCut=job;}
-  for(;job.sample<=job.samples;job.sample++){
+  if(!job||job.base!==base){const ax=data[base+f.fromX],az=data[base+f.fromZ],bx=data[base+f.toX],bz=data[base+f.toZ],nose=Math.max(.1,data[base+f.toolSize]||.8),type=data[base+f.toolType],length=Math.hypot(bx-ax,bz-az),start=kernel.progress||0,end=targetProgress,samples=Math.max(1,Math.ceil(length/Math.max(.05,cfg.resolution*.45)));job={base,sample:start>0?Math.floor(start*samples+1e-8)+1:0,samples,lastSample:Math.min(samples,Math.floor(end*samples+1e-8)),ax,az,bx,bz,nose,inner:type===TOOL_CODES.boring||type===TOOL_CODES.drill};kernel.activeCut=job;}
+  for(;job.sample<=job.lastSample;job.sample++){
     const ratio=job.sample/job.samples,x=job.ax+(job.bx-job.ax)*ratio,z=job.az+(job.bz-job.az)*ratio,radius=Math.abs(x)/2;
     if(z>job.nose||z<-cfg.length-job.nose){if((job.sample&31)===31&&now()>=deadline){job.sample++;return false;}continue;}
     const first=Math.max(0,Math.floor((-z-job.nose)/cfg.resolution)),last=Math.min(kernel.profile.length-1,Math.ceil((-z+job.nose)/cfg.resolution));
@@ -132,25 +133,43 @@ function compactDirty(tracker,values){
   return{indices,values:result};
 }
 
-export function processKernelBatch(kernel,{budgetMs=8,stepLimit=512,dirtyLimit=16000}={}){
+export function processKernelBatch(kernel,{budgetMs=8,stepLimit=512,dirtyLimit=16000,simulatedMs,stopIndex=Infinity}={}){
   const started=now(),deadline=started+budgetMs,stepCount=kernel.steps.length/STEP_STRIDE,startIndex=kernel.cursor;
   if(kernel.machine==='lathe'){beginDirtyBatch(kernel.outerDirty);beginDirtyBatch(kernel.innerDirty);}else beginDirtyBatch(kernel.dirty);
   let processed=0,partial=false;
-  while(kernel.cursor+1<stepCount&&processed<stepLimit){
+  const timed=Number.isFinite(simulatedMs);
+  if(timed)kernel.timeCredit=Math.min(60000,kernel.timeCredit+Math.max(0,simulatedMs));
+  while(kernel.cursor+1<stepCount&&kernel.cursor<stopIndex&&processed<stepLimit){
     const index=kernel.cursor+1,base=index*STEP_STRIDE,kind=kernel.steps[base+STEP_FIELDS.kind],cut=kernel.steps[base+STEP_FIELDS.cut]===1;
-    if(kind===1&&cut){const complete=kernel.machine==='lathe'?cutLatheStep(kernel,base,deadline):cutMillStep(kernel,base,deadline);if(!complete){partial=true;break;}}
+    if(!kernel.activeMotion){
+      const duration=Math.max(0,kernel.steps[base+STEP_FIELDS.duration]);
+      if(timed&&duration>0&&kernel.timeCredit<=1e-8)break;
+      const progress=timed&&duration>0?Math.min(1,kernel.progress+kernel.timeCredit/duration):1;
+      if(timed)kernel.timeCredit=Math.max(0,kernel.timeCredit-(progress-kernel.progress)*duration);
+      kernel.activeMotion={progress};
+    }
+    const target=kernel.activeMotion.progress;
+    if(kind===1&&cut){const complete=kernel.machine==='lathe'?cutLatheStep(kernel,base,deadline,target):cutMillStep(kernel,base,deadline,target);if(!complete){partial=true;break;}}
+    kernel.progress=target;kernel.activeMotion=null;
+    if(kernel.progress<1-1e-9){partial=true;break;}
+    kernel.progress=0;
     kernel.cursor=index;processed++;
     const dirtyCount=kernel.machine==='lathe'?kernel.outerDirty.count+kernel.innerDirty.count:kernel.dirty.count;
     if(dirtyCount>=dirtyLimit)break;
     if((processed&7)===0&&now()>=deadline)break;
   }
   const elapsed=now()-started,done=!kernel.activeCut&&kernel.cursor>=stepCount-1;
+  const stopped=kernel.cursor>=stopIndex;
+  if(stopped)kernel.timeCredit=0;
+  const sampling=kernel.activeCut;
+  const visibleProgress=sampling?Math.max(kernel.progress,Math.min(kernel.activeMotion.progress,(sampling.sample-1)/(sampling.count||sampling.samples))):kernel.progress;
+  const motion={activeIndex:visibleProgress>0||kernel.activeMotion?kernel.cursor+1:-1,progress:visibleProgress,stopped};
   if(kernel.machine==='lathe'){
     const outer=compactDirty(kernel.outerDirty,kernel.profile),inner=compactDirty(kernel.innerDirty,kernel.innerProfile);
-    return{machine:kernel.machine,startIndex,endIndex:kernel.cursor,processed,elapsed,done,partial,indices:outer.indices,values:outer.values,innerIndices:inner.indices,innerValues:inner.values};
+    return{machine:kernel.machine,startIndex,endIndex:kernel.cursor,processed,elapsed,done,partial,...motion,indices:outer.indices,values:outer.values,innerIndices:inner.indices,innerValues:inner.values};
   }
   const changes=compactDirty(kernel.dirty,kernel.depth);
-  return{machine:kernel.machine,startIndex,endIndex:kernel.cursor,processed,elapsed,done,partial,indices:changes.indices,values:changes.values};
+  return{machine:kernel.machine,startIndex,endIndex:kernel.cursor,processed,elapsed,done,partial,...motion,indices:changes.indices,values:changes.values};
 }
 
 const workerScope=typeof WorkerGlobalScope!=='undefined'&&globalThis instanceof WorkerGlobalScope;

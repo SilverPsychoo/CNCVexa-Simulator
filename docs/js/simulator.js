@@ -1,3 +1,5 @@
+import {drawPathHighlight} from './vertex-inspector.js';
+import {SurfaceRenderer,buildCutterMesh} from './surface-renderer.js';
 const t=value=>globalThis.CNCVexaI18n?.translateString(String(value))??String(value);
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const unionBounds=(a,b)=>({minX:Math.min(a.minX,b.minX),maxX:Math.max(a.maxX,b.maxX),minY:Math.min(a.minY,b.minY),maxY:Math.max(a.maxY,b.maxY),minZ:Math.min(a.minZ,b.minZ),maxZ:Math.max(a.maxZ,b.maxZ)});
@@ -6,10 +8,11 @@ export class StockSimulator{
   constructor(canvas){
     this.canvas=canvas;
     this.ctx=canvas.getContext('2d');
+    this.surfaceRenderer=new SurfaceRenderer();
     this.active=true;
     this.view='free';
     this.viewMode='3d';
-    this.renderQuality='medium';
+    this.renderQuality='ultra';
     this.playbackActive=false;
     this.showRapids=true;
     this.showCuts=true;
@@ -26,17 +29,17 @@ export class StockSimulator{
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(canvas);
     this.bindCameraControls();
-    this.configure({units:'mm',x:220,y:120,z:30,resolution:1.5,renderQuality:'high',zeroMode:'corner',position:{x:0,y:0},table:{x:600,y:400,z:40,topZ:-30,slotDirection:'x'}});
+    this.configure({units:'mm',x:220,y:120,z:30,resolution:.5,renderQuality:'ultra',zeroMode:'corner',position:{x:0,y:0},table:{x:600,y:400,z:40,topZ:-30,slotDirection:'x'}});
     this.setPath([]);
   }
 
   qualitySettings(level=this.renderQuality){
     return {
-      low:{tileBudget:900,circleSegments:12,pathStep:1.0,markLimit:220},
-      medium:{tileBudget:2400,circleSegments:18,pathStep:.65,markLimit:360},
-      high:{tileBudget:6000,circleSegments:28,pathStep:.38,markLimit:520},
-      ultra:{tileBudget:9000,circleSegments:42,pathStep:.24,markLimit:700}
-    }[level]||{tileBudget:3200,circleSegments:18,pathStep:.65,markLimit:360};
+      low:{tileBudget:900,circleSegments:12,toolSegments:12,pathStep:1.0,markLimit:220},
+      medium:{tileBudget:2400,circleSegments:18,toolSegments:24,pathStep:.65,markLimit:360},
+      high:{tileBudget:6000,circleSegments:28,toolSegments:40,pathStep:.38,markLimit:520},
+      ultra:{tileBudget:9000,circleSegments:42,toolSegments:64,pathStep:.24,markLimit:700}
+    }[level]||{tileBudget:3200,circleSegments:18,toolSegments:24,pathStep:.65,markLimit:360};
   }
 
   displayQualitySettings(){
@@ -91,26 +94,28 @@ export class StockSimulator{
 
   configure(cfg){
     this.cfg={...cfg,renderQuality:cfg.renderQuality||this.renderQuality,position:{x:cfg.position?.x||0,y:cfg.position?.y||0},table:{x:cfg.table?.x||600,y:cfg.table?.y||400,z:cfg.table?.z||40,topZ:Number.isFinite(cfg.table?.topZ)?cfg.table.topZ:-(cfg.z||30),slotDirection:cfg.table?.slotDirection==='y'?'y':'x'}};
-    this.renderQuality=this.cfg.renderQuality||'medium';
+    this.renderQuality=this.cfg.renderQuality||'ultra';
     this.nx=Math.ceil(this.cfg.x/this.cfg.resolution)+1;
     this.ny=Math.ceil(this.cfg.y/this.cfg.resolution)+1;
     this.depth=new Float32Array(this.nx*this.ny);
     this.depth.fill(0);
+    this.materialRevision=(this.materialRevision||0)+1;
     this.cutMarks=[];
     this.hasCuts=false;
     this.path=[];
     this.current=-1;
+    this.motion=null;
     this.toolPos={x:0,y:0,z:Math.max(100,this.stockBounds().maxZ+50)};
     this.fitView(this.viewMode==='2d'?'stock':'scene',false);
   }
 
-  resetCut(){this.depth.fill(0);this.cutMarks=[];this.hasCuts=false;this.current=-1;this.toolPos={x:0,y:0,z:Math.max(100,this.stockBounds().maxZ+50)};this.draw();}
-  setPath(path){this.path=path||[];this.current=-1;this.draw();}
+  resetCut(){this.depth.fill(0);this.materialRevision=(this.materialRevision||0)+1;this.cutMarks=[];this.hasCuts=false;this.current=-1;this.motion=null;this.toolPos={x:0,y:0,z:Math.max(100,this.stockBounds().maxZ+50)};this.draw();}
+  setPath(path){this.path=path||[];this.hoveredPath=null;this.current=-1;this.draw();}
   setCurrentTool(tool={}){this.currentTool={...this.currentTool,...tool};this.draw();}
   getCamera(){return {...this.camera,view:this.view,focusTarget:this.focusTarget};}
   setCamera(camera={}){Object.assign(this.camera,camera);if(camera.view)this.view=camera.view;if(camera.focusTarget)this.focusTarget=camera.focusTarget;this.draw();}
-  setDisplayMode(mode='3d'){this.viewMode=mode==='2d'?'2d':'3d';if(this.viewMode==='2d'){this.view='top';this.camera.pitch=89.5*Math.PI/180;this.camera.yaw=-90*Math.PI/180;}this.draw();}
-  setRenderQuality(level='medium'){this.renderQuality=['low','medium','high','ultra'].includes(level)?level:'medium';this.cfg.renderQuality=this.renderQuality;this.resize();}
+  setDisplayMode(mode='3d'){this.hoveredPath=null;this.viewMode=mode==='2d'?'2d':'3d';if(this.viewMode==='2d'){this.view='top';this.camera.pitch=89.5*Math.PI/180;this.camera.yaw=-90*Math.PI/180;}this.draw();}
+  setRenderQuality(level='ultra'){this.renderQuality=['low','medium','high','ultra'].includes(level)?level:'ultra';this.cfg.renderQuality=this.renderQuality;this.resize();}
 
   stockBounds(){
     const {x,y,z,zeroMode,position,table}=this.cfg,top=table.topZ+z;
@@ -156,18 +161,19 @@ export class StockSimulator{
   applyStep(step,redraw=true){
     const options=arguments[2]||{};
     if(!step||step.kind!=='move')return;
-    this.current++;
+    this.current=options.index??(this.current+1);
     this.toolPos={...step.to};
     this.currentTool={...this.currentTool,diameter:step.diameter||this.currentTool.diameter,length:step.toolLength||this.currentTool.length,type:step.toolType||this.currentTool.type,name:step.toolName||this.currentTool.name,angle:step.toolAngle||this.currentTool.angle};
     if(step.cut&&!options.skipCut)this.cutSegment(step.from,step.to,this.currentTool);
     const drillingCycle=/^G(?:73|74|76|8[1-9])$/.test(step.cycle||''),verticalDown=Math.hypot(step.to.x-step.from.x,step.to.y-step.from.y)<=Math.max(.02,(this.currentTool.diameter||10)*.04)&&step.to.z<step.from.z;
-    if(drillingCycle&&verticalDown)this.registerCutMark(step.to.x,step.to.y,Math.max(.1,(this.currentTool.diameter||10)/2),step.to.z,this.currentTool);
+    if(!options.partial&&drillingCycle&&verticalDown)this.registerCutMark(step.to.x,step.to.y,Math.max(.1,(this.currentTool.diameter||10)/2),step.to.z,this.currentTool);
     if(redraw)this.draw();
   }
 
   applyMaterialDeltas(indices,values){
     for(let i=0;i<indices.length;i++)this.depth[indices[i]]=values[i];
     if(indices.length)this.hasCuts=true;
+    if(indices.length)this.materialRevision=(this.materialRevision||0)+1;
   }
 
   cutterSurfaceZ(z,distance,tool,radius){
@@ -286,9 +292,10 @@ export class StockSimulator{
     this.drawBackground();
     if(this.showTable)this.drawTable();
     if(this.showGrid)this.drawWorldGrid();
-    if(this.showStock)this.drawStock();
+    const rendered=this.surfaceRenderer?.renderMill(this);
+    if(!rendered&&this.showStock)this.drawStock();
     if(this.showToolpath)this.drawPath();
-    this.drawTool();
+    if(!rendered)this.drawTool();
     this.drawAxes();
   }
 
@@ -330,18 +337,23 @@ export class StockSimulator{
         const radius=Math.max(.1,(s.diameter||this.currentTool.diameter||10)/2),xy=Math.hypot(s.to.x-s.from.x,s.to.y-s.from.y);
         if(this.showCuts&&/^G(?:73|74|76|8[1-9])$/.test(s.cycle||'')&&s.cut&&xy<=Math.max(.03,radius*.12)&&s.to.z<s.from.z){
           const key=`${s.to.x.toFixed(3)}:${s.to.y.toFixed(3)}:${radius.toFixed(3)}`;
-          drillSites.set(key,{x:s.to.x,y:s.to.y,radius});
+          if(i<this.current||(i===this.current&&!this.motion))drillSites.set(key,{x:s.to.x,y:s.to.y,radius});
         }
         if(s.type==='G00'&&!this.showRapids)continue;
         if(s.type!=='G00'&&!this.showCuts)continue;
         const a=this.project2D(s.from.x,s.from.y),b=this.project2D(s.to.x,s.to.y);
         if(Math.hypot(b.x-a.x,b.y-a.y)<.35)continue;
         if(s.type==='G00'){
-          c.strokeStyle='#aab2b7';c.lineWidth=1;c.setLineDash([5,5]);
+          c.strokeStyle='rgba(150,158,165,.22)';c.lineWidth=1;c.setLineDash([5,5]);
         }else{
-          c.strokeStyle='#151515';c.lineWidth=i===this.current?2.2:1.65;c.setLineDash([]);
+          c.strokeStyle='rgba(21,21,21,.16)';c.lineWidth=1.2;c.setLineDash([]);
         }
         c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+        if(i<=this.current){
+          const end=this.motion?.index===i?this.project2D(this.toolPos.x,this.toolPos.y):b;
+          c.strokeStyle=s.type==='G00'?'#7c8e99':'#151515';c.lineWidth=i===this.current?2.4:1.65;
+          c.beginPath();c.moveTo(a.x,a.y);c.lineTo(end.x,end.y);c.stroke();
+        }
       }
       c.setLineDash([]);c.lineCap='butt';c.lineJoin='miter';
     }
@@ -357,7 +369,9 @@ export class StockSimulator{
     c.beginPath();c.moveTo(origin.x-10,origin.y);c.lineTo(origin.x+10,origin.y);c.moveTo(origin.x,origin.y-10);c.lineTo(origin.x,origin.y+10);c.stroke();
 
     const toolPoint=this.project2D(this.toolPos.x,this.toolPos.y);
-    c.strokeStyle='#b0b6ba';c.lineWidth=1;c.beginPath();c.moveTo(toolPoint.x-6,toolPoint.y);c.lineTo(toolPoint.x+6,toolPoint.y);c.moveTo(toolPoint.x,toolPoint.y-6);c.lineTo(toolPoint.x,toolPoint.y+6);c.stroke();
+    c.fillStyle='#1689bc';c.beginPath();c.arc(toolPoint.x,toolPoint.y,3.5,0,Math.PI*2);c.fill();
+    c.strokeStyle='#1689bc';c.lineWidth=1;c.beginPath();c.moveTo(toolPoint.x-7,toolPoint.y);c.lineTo(toolPoint.x+7,toolPoint.y);c.moveTo(toolPoint.x,toolPoint.y-7);c.lineTo(toolPoint.x,toolPoint.y+7);c.stroke();
+    drawPathHighlight(this);
   }
 
   drawWorldGrid(){
@@ -538,52 +552,24 @@ export class StockSimulator{
     c.lineCap='round';c.lineJoin='round';
     for(let i=0;i<this.path.length;i++){
       const s=this.path[i];if(s.kind!=='move'||(s.type==='G00'&&!this.showRapids)||(s.type!=='G00'&&!this.showCuts))continue;
-      const a=this.projection(s.from.x,s.from.y,s.from.z),b=this.projection(s.to.x,s.to.y,s.to.z),done=i<=this.current;
+      const a=this.projection(s.from.x,s.from.y,s.from.z),b=this.projection(s.to.x,s.to.y,s.to.z),done=i<this.current||(i===this.current&&!this.motion);
       c.strokeStyle=done?(s.type==='G00'?'rgba(66,199,255,.76)':'rgba(76,255,165,.98)'):(s.type==='G00'?'rgba(66,199,255,.24)':'rgba(226,236,241,.34)');
       c.setLineDash(s.type==='G00'?[6,5]:[]);c.lineWidth=i===this.current?3:1.35;c.shadowColor=i===this.current?'rgba(255,210,31,.35)':'transparent';c.shadowBlur=i===this.current?6:0;c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+      if(this.motion?.index===i){const end=this.projection(this.toolPos.x,this.toolPos.y,this.toolPos.z);c.strokeStyle=s.type==='G00'?'rgba(66,199,255,.76)':'rgba(76,255,165,.98)';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(end.x,end.y);c.stroke();}
     }
     c.setLineDash([]);c.shadowBlur=0;c.lineCap='butt';c.lineJoin='miter';
   }
 
   drawTool(){
-    const c=this.ctx,tool=this.currentTool,r=Math.max(.5,(tool.diameter||3)/2),length=Math.max(20,tool.length||45),tip=this.projection(this.toolPos.x,this.toolPos.y,this.toolPos.z),upper=this.projection(this.toolPos.x,this.toolPos.y,this.toolPos.z+length),rx=this.projection(this.toolPos.x+r,this.toolPos.y,this.toolPos.z),ry=this.projection(this.toolPos.x,this.toolPos.y+r,this.toolPos.z),screenR=Math.max(2.5,Math.min(42,Math.max(Math.hypot(rx.x-tip.x,rx.y-tip.y),Math.hypot(ry.x-tip.x,ry.y-tip.y))));
-    let vx=upper.x-tip.x,vy=upper.y-tip.y,vlen=Math.hypot(vx,vy)||1;vx/=vlen;vy/=vlen;const nx=-vy,ny=vx;
-    const point=(t,side=0)=>({x:tip.x+vx*vlen*t+nx*side,y:tip.y+vy*vlen*t+ny*side});
-    const polygon=(points,fill,stroke='rgba(15,25,30,.75)',width=1)=>{c.beginPath();c.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)c.lineTo(points[i].x,points[i].y);c.closePath();if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}};
-    const body=(t0,t1,w0,w1,fill,stroke)=>polygon([point(t0,-w0),point(t0,w0),point(t1,w1),point(t1,-w1)],fill,stroke,1);
-    const ellipseAt=(t,wide,high,fill,stroke)=>{const p=point(t);c.save();c.translate(p.x,p.y);c.rotate(Math.atan2(vy,vx)+Math.PI/2);c.beginPath();c.ellipse(0,0,wide,high,0,0,Math.PI*2);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=1;c.stroke();}c.restore();};
-    const steel=c.createLinearGradient(tip.x-screenR,tip.y,tip.x+screenR,tip.y);steel.addColorStop(0,'#5e727e');steel.addColorStop(.32,'#dce7ec');steel.addColorStop(.56,'#8fa3ad');steel.addColorStop(1,'#40545f');
-    const carbide=c.createLinearGradient(tip.x-screenR,tip.y,tip.x+screenR,tip.y);carbide.addColorStop(0,'#9c7410');carbide.addColorStop(.35,'#ffe86b');carbide.addColorStop(.62,'#d7ad19');carbide.addColorStop(1,'#72530b');
-    const dark=c.createLinearGradient(tip.x-screenR,tip.y,tip.x+screenR,tip.y);dark.addColorStop(0,'#26343c');dark.addColorStop(.5,'#7f919a');dark.addColorStop(1,'#1b2930');
-    c.save();c.lineCap='round';c.lineJoin='round';
-    // Portaherramientas y mango.
-    body(.68,1,Math.max(4,screenR*.55),Math.max(6,screenR*.78),dark,'rgba(220,235,241,.35)');
-    ellipseAt(1,Math.max(6,screenR*.78),Math.max(2,screenR*.22),'#667984','rgba(226,239,244,.42)');
-    body(.27,.72,Math.max(2.2,screenR*.22),Math.max(3.2,screenR*.32),steel,'rgba(235,246,250,.38)');
-    if(tool.type==='face'){
-      body(.06,.30,Math.max(3,screenR*.26),Math.max(3,screenR*.26),steel,'rgba(230,241,246,.4)');
-      ellipseAt(.055,screenR*1.18,Math.max(3,screenR*.30),carbide,'rgba(26,31,33,.88)');
-      const center=point(.052),angle=Math.atan2(vy,vx)+Math.PI/2;
-      for(let i=0;i<6;i++){const a=i/6*Math.PI*2,px=center.x+Math.cos(a)*screenR*.88,py=center.y+Math.sin(a)*screenR*.25;c.save();c.translate(px,py);c.rotate(angle+a);c.fillStyle='#d6dce0';c.fillRect(-2.2,-1.3,4.4,2.6);c.restore();}
-    }else if(tool.type==='ball'){
-      body(.11,.38,screenR*.74,screenR*.48,carbide,'rgba(55,42,9,.92)');
-      c.beginPath();c.arc(tip.x,tip.y,screenR*.78,0,Math.PI*2);c.fillStyle=carbide;c.fill();c.strokeStyle='rgba(48,37,10,.95)';c.lineWidth=1.1;c.stroke();
-      c.strokeStyle='rgba(255,247,184,.58)';c.lineWidth=1;c.beginPath();c.arc(tip.x,tip.y,screenR*.50,-1.1,1.65);c.stroke();
-      for(let i=0;i<2;i++){const a=point(.16+i*.09,-screenR*.58),b=point(.31+i*.06,screenR*.42);c.strokeStyle='rgba(71,51,7,.72)';c.lineWidth=1.15;c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();}
-    }else if(tool.type==='drill'){
-      body(.13,.55,screenR*.50,screenR*.38,steel,'rgba(42,55,61,.9)');
-      polygon([tip,point(.16,-screenR*.50),point(.16,screenR*.50)],steel,'rgba(37,48,54,.95)',1);
-      for(let i=0;i<3;i++){const a=point(.13+i*.12,-screenR*.46),b=point(.29+i*.12,screenR*.40);c.strokeStyle=i%2?'rgba(32,45,52,.88)':'rgba(235,245,249,.48)';c.lineWidth=1.25;c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();}
-    }else if(tool.type==='chamfer'){
-      body(.22,.45,screenR*.35,screenR*.28,steel,'rgba(38,50,56,.88)');
-      polygon([tip,point(.24,-screenR*.88),point(.24,screenR*.88)],carbide,'rgba(54,42,9,.92)',1);
-      const a=point(.07,-screenR*.24),b=point(.22,screenR*.70);c.strokeStyle='rgba(255,244,169,.58)';c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
-    }else{
-      body(.02,.40,screenR*.72,screenR*.48,carbide,'rgba(53,41,8,.92)');
-      const edge1=point(.02,-screenR*.72),edge2=point(.02,screenR*.72);c.strokeStyle='rgba(255,245,180,.72)';c.lineWidth=1.1;c.beginPath();c.moveTo(edge1.x,edge1.y);c.lineTo(edge2.x,edge2.y);c.stroke();
-      for(let i=0;i<3;i++){const a=point(.05+i*.10,-screenR*.68),b=point(.19+i*.09,screenR*.44);c.strokeStyle=i===1?'rgba(255,248,190,.60)':'rgba(76,54,6,.76)';c.lineWidth=1.05;c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();}
+    const tool=this.currentTool,segments=this.displayQualitySettings().toolSegments,key=[tool.type,tool.diameter,tool.length,tool.angle,tool.flutes,tool.cuttingLength,tool.helixAngle,segments].join(':');
+    if(this.toolMeshKey!==key){this.toolMesh=buildCutterMesh(tool,segments);this.toolMeshKey=key;}
+    const mesh=this.toolMesh,faces=[];
+    for(let i=0;i<mesh.length;i+=27){
+      const points=[0,9,18].map(k=>({x:mesh[i+k]+this.toolPos.x,y:mesh[i+k+1]+this.toolPos.y,z:mesh[i+k+2]+this.toolPos.z}));
+      const light=.64+.4*Math.max(0,mesh[i+3]*-.34+mesh[i+4]*-.42+mesh[i+5]*.84),color=`rgb(${Math.round(mesh[i+6]*255*light)},${Math.round(mesh[i+7]*255*light)},${Math.round(mesh[i+8]*255*light)})`;
+      faces.push({points,color,depth:points.reduce((sum,p)=>sum+this.rawProjection(p).depth,0)/3});
     }
-    c.restore();
+    faces.sort((a,b)=>a.depth-b.depth);for(const face of faces)this.drawPoly(face.points,face.color);
   }
 
   drawAxes(){

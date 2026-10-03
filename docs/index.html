@@ -19,7 +19,7 @@
   <link rel="icon" type="image/png" href="assets/favicon.png">
   <link rel="apple-touch-icon" href="assets/icon-192.png">
   <link rel="manifest" href="site.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=6.0.2">
+  <link rel="stylesheet" href="styles.css?v=6.2.0">
   <script id="websiteSchema" type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -55,7 +55,7 @@
       <header class="home-topbar">
         <div class="home-identity">
           <img src="assets/logo.png" alt="" aria-hidden="true">
-          <div><strong>CNCVexa</strong><span>SIMULATOR / 6.0.0</span></div>
+          <div><strong>CNCVexa</strong><span>SIMULATOR / 6.2.0</span></div>
         </div>
         <div class="home-topbar-tools">
           <div class="language-switch home-language-switch" role="group" aria-label="Idioma">
@@ -82,9 +82,9 @@
               <div class="home-machine-copy"><span>3 EJES / PLANO G17</span><h2>Fresadora</h2><p>XYZ&nbsp;&nbsp; G54–G59&nbsp;&nbsp; mm / in</p></div>
             </header>
             <div class="home-machine-actions">
-              <button class="home-action-main" data-home-action="new" data-home-machine="mill"><span><strong>Nuevo programa</strong><small>Fresadora</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button>
-              <button class="home-action-row" data-home-action="program" data-home-machine="mill"><span><strong>Abrir código</strong><small>.NC  .TAP  .GCODE</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5zM12 3v4h3M8 11h4M8 14h4"/></svg></button>
-              <button class="home-action-row" data-home-action="project" data-home-machine="mill"><span><strong>Abrir proyecto</strong><small>.CNCVEXA</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h6l2 2h6v8H3zM3 6V4h5l2 2"/></svg></button>
+              <button type="button" class="home-action-main" data-home-action="new" data-home-machine="mill"><span><strong>Nuevo programa</strong><small>Fresadora</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button>
+              <button type="button" class="home-action-row" data-home-action="program" data-home-machine="mill"><span><strong>Abrir código</strong><small>.NC  .TAP  .GCODE</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5zM12 3v4h3M8 11h4M8 14h4"/></svg></button>
+              <button type="button" class="home-action-row" data-home-action="project" data-home-machine="mill"><span><strong>Abrir proyecto</strong><small>.CNCVEXA</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h6l2 2h6v8H3zM3 6V4h5l2 2"/></svg></button>
             </div>
           </article>
 
@@ -100,9 +100,9 @@
               <div class="home-machine-copy"><span>2 EJES / PLANO G18</span><h2>Torno</h2><p>XZ&nbsp;&nbsp; X en diámetro&nbsp;&nbsp; mm / in</p></div>
             </header>
             <div class="home-machine-actions">
-              <button class="home-action-main" data-home-action="new" data-home-machine="lathe"><span><strong>Nuevo programa</strong><small>Torno</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button>
-              <button class="home-action-row" data-home-action="program" data-home-machine="lathe"><span><strong>Abrir código</strong><small>.NC  .TAP  .GCODE</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5zM12 3v4h3M8 11h4M8 14h4"/></svg></button>
-              <button class="home-action-row" data-home-action="project" data-home-machine="lathe"><span><strong>Abrir proyecto</strong><small>.CNCVEXA</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h6l2 2h6v8H3zM3 6V4h5l2 2"/></svg></button>
+              <button type="button" class="home-action-main" data-home-action="new" data-home-machine="lathe"><span><strong>Nuevo programa</strong><small>Torno</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5"/></svg></button>
+              <button type="button" class="home-action-row" data-home-action="program" data-home-machine="lathe"><span><strong>Abrir código</strong><small>.NC  .TAP  .GCODE</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3h7l3 3v11H5zM12 3v4h3M8 11h4M8 14h4"/></svg></button>
+              <button type="button" class="home-action-row" data-home-action="project" data-home-machine="lathe"><span><strong>Abrir proyecto</strong><small>.CNCVEXA</small></span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h6l2 2h6v8H3zM3 6V4h5l2 2"/></svg></button>
             </div>
           </article>
         </section>
@@ -260,7 +260,7 @@
           <header class="sim-toolbar">
             <div class="transport compact-transport">
               <button data-action="reset" title="Reiniciar"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 6V2M5 6h4M5.2 5.8A7 7 0 1 1 3 11"/></svg></button>
-              <button data-action="step" title="Bloque a bloque (F10)"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4v12M8 4l8 6-8 6z"/></svg></button>
+              <button data-action="step" class="step-button" aria-label="Paso a paso (F10)" title="Paso a paso (F10)"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4v12M8 4l8 6-8 6z"/></svg></button>
               <button data-action="play" class="play-compact" title="Ejecutar (F5)"><svg class="ui-icon icon-fill" data-run-icon viewBox="0 0 20 20" aria-hidden="true"><path d="m6 4 10 6-10 6z"/></svg></button>
             </div>
             <div class="display-modes" aria-label="Modo de simulación">
@@ -271,11 +271,11 @@
             <button class="toolbar-button" data-action="fitStock" title="Enfocar solamente la pieza">Pieza</button>
             <button class="toolbar-button mobile-zoom-button" type="button" data-mobile-zoom="out" title="Alejar">−</button>
             <button class="toolbar-button mobile-zoom-button" type="button" data-mobile-zoom="in" title="Acercar">＋</button>
-            <label class="speed-control">Velocidad<input id="speedRange" type="range" min="1" max="100" value="35"><output id="speedOut">35×</output></label>
+            <label class="speed-control">Velocidad<input id="speedRange" type="range" min="1" max="100" value="1"><output id="speedOut">1×</output></label>
             <details class="sim-options">
               <summary title="Opciones de visualización"><svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M7 3v4M4 10h12M13 8v4M4 15h12M9 13v4"/></svg><span>Más</span></summary>
               <div class="sim-options-popover">
-                <label class="toolbar-select">Detalle<select id="renderQuality"><option value="low">Básico</option><option value="medium" selected>Normal</option><option value="high">Alto</option><option value="ultra">Máximo</option></select></label>
+                <label class="toolbar-select">Detalle<select id="renderQuality"><option value="low">Básico</option><option value="medium">Normal</option><option value="high">Alto</option><option value="ultra" selected>Máximo</option></select></label>
                 <label class="mini-toggle"><input id="showRapids" type="checkbox" checked><span></span>Rápidos</label>
                 <label class="mini-toggle"><input id="showCuts" type="checkbox" checked><span></span>Corte</label>
                 <label class="mini-toggle"><input id="showGrid" type="checkbox" checked><span></span>Cuadrícula</label>
@@ -356,7 +356,7 @@
         <div class="form-section"><h3>Mesa de la fresadora</h3><div class="form-grid four"><label>Largo X <span class="unit-mark">(mm)</span><input id="tableX" class="stock-length" type="number" min="1" step="1" value="600"></label><label>Ancho Y <span class="unit-mark">(mm)</span><input id="tableY" class="stock-length" type="number" min="1" step="1" value="400"></label><label>Espesor <span class="unit-mark">(mm)</span><input id="tableZ" class="stock-length" type="number" min="1" step="1" value="40"></label><label>Superficie Z máquina <span class="unit-mark">(mm)</span><input id="tableTopZ" class="stock-length" type="number" step="0.001" value="-30"></label></div><p class="help-text">La mesa está centrada en X0 Y0. La superficie Z define su altura en coordenadas máquina.</p></div>
         <div class="form-section"><h3>Dimensiones de la pieza</h3><div class="form-grid three"><label>Largo X <span class="unit-mark">(mm)</span><input id="stockX" class="stock-length" type="number" min="0.001" step="1" value="220"></label><label>Ancho Y <span class="unit-mark">(mm)</span><input id="stockY" class="stock-length" type="number" min="0.001" step="1" value="120"></label><label>Espesor Z <span class="unit-mark">(mm)</span><input id="stockZ" class="stock-length" type="number" min="0.001" step="1" value="30"></label></div></div>
         <div class="form-section"><h3>Posición de la pieza sobre la mesa</h3><div class="form-grid three"><label>Referencia visual<select id="zeroMode"><option value="corner" selected>Esquina inferior izquierda</option><option value="center">Centro de la cara superior</option></select></label><label>Posición X máquina <span class="unit-mark">(mm)</span><input id="stockPosX" class="stock-length" type="number" step="0.001" value="0"></label><label>Posición Y máquina <span class="unit-mark">(mm)</span><input id="stockPosY" class="stock-length" type="number" step="0.001" value="0"></label></div><div class="button-row"><button id="centerStockBtn" type="button">Centrar pieza en la mesa</button><button id="syncG54Btn" type="button">Copiar origen de pieza a G54</button></div><label class="check-row"><input id="syncG54OnApply" type="checkbox" checked><span>Actualizar G54 automáticamente al aplicar esta configuración</span></label><p id="piecePositionInfo" class="help-text"></p></div>
-        <div class="form-section"><h3>Calidad de simulación</h3><div class="form-grid two"><label>Resolución de remoción<select id="resolution"><option value="1.5">Muy alta · 1.5 mm</option><option value="2">Alta · 2 mm</option><option value="3" selected>Media · 3 mm</option><option value="5">Rápida · 5 mm</option></select></label><label>Visualización de mesa<select id="tableSlotDirection"><option value="x">Ranuras T paralelas a X</option><option value="y">Ranuras T paralelas a Y</option></select></label></div><p class="help-text">La simulación se calcula internamente en milímetros, aunque configures y programes en pulgadas.</p></div>
+        <div class="form-section"><h3>Calidad de simulación</h3><div class="form-grid two"><label>Resolución de remoción<select id="resolution"><option value="0.25">0.25 mm</option><option value="0.5" selected>0.5 mm</option><option value="1">1 mm</option><option value="1.5">Muy alta · 1.5 mm</option><option value="2">Alta · 2 mm</option><option value="3">Media · 3 mm</option><option value="5">Rápida · 5 mm</option></select></label><label>Visualización de mesa<select id="tableSlotDirection"><option value="x">Ranuras T paralelas a X</option><option value="y">Ranuras T paralelas a Y</option></select></label></div><p class="help-text">La simulación se calcula internamente en milímetros, aunque configures y programes en pulgadas.</p></div>
       </div>
       <footer><button value="cancel">Cancelar</button><button id="applyStockBtn" value="default" class="primary">Aplicar espacio de trabajo</button></footer>
     </form>
@@ -407,8 +407,8 @@
       <header><div><span class="eyebrow">TORNO · MATERIA PRIMA</span><h2>Barra, plato y unidades</h2></div><button class="dialog-close" value="cancel">×</button></header>
       <div class="dialog-body">
         <div class="workspace-header"><div><strong>Modelo de revolución X–Z</strong><span>X se programa como diámetro y Z0 corresponde a la cara frontal de la pieza.</span></div><label class="unit-selector">Unidad<select id="latheUnit"><option value="mm">Milímetros (mm)</option><option value="in">Pulgadas (in)</option></select></label></div>
-        <div class="form-section"><h3>Materia prima</h3><div class="form-grid four"><label>Diámetro exterior <span class="lathe-unit-mark">(mm)</span><input id="latheDiameter" class="lathe-length" type="number" min="1" step="1" value="60"></label><label>Diámetro interior <span class="lathe-unit-mark">(mm)</span><input id="latheBore" class="lathe-length" type="number" min="0" step="1" value="0"></label><label>Longitud <span class="lathe-unit-mark">(mm)</span><input id="latheLength" class="lathe-length" type="number" min="1" step="1" value="120"></label><label>Resolución del perfil <span class="lathe-unit-mark">(mm)</span><input id="latheResolution" class="lathe-length" type="number" min="0.2" step="0.1" value="1"></label></div></div>
-        <div class="form-section"><h3>Sujeción</h3><div class="form-grid four"><label>Plato<input value="3 mordazas autocentrante" readonly></label><label>Longitud fuera del plato <span class="lathe-unit-mark">(mm)</span><input id="latheStickout" class="lathe-length" type="number" min="1" step="1" value="100"></label><label>Longitud visual del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckLength" class="lathe-length" type="number" min="5" step="1" value="30"></label><label>Detalle<select id="latheQuality"><option value="low">Básico</option><option value="medium">Normal</option><option value="high" selected>Alto</option><option value="ultra">Máximo</option></select></label></div><p id="latheGripInfo" class="help-text">La cara frontal está en Z0. Las mordazas sujetan la parte de la barra que queda detrás de la longitud de salida.</p></div>
+        <div class="form-section"><h3>Materia prima</h3><div class="form-grid four"><label>Diámetro exterior <span class="lathe-unit-mark">(mm)</span><input id="latheDiameter" class="lathe-length" type="number" min="1" step="1" value="60"></label><label>Diámetro interior <span class="lathe-unit-mark">(mm)</span><input id="latheBore" class="lathe-length" type="number" min="0" step="1" value="0"></label><label>Longitud <span class="lathe-unit-mark">(mm)</span><input id="latheLength" class="lathe-length" type="number" min="1" step="1" value="120"></label><label>Resolución del perfil <span class="lathe-unit-mark">(mm)</span><input id="latheResolution" class="lathe-length" type="number" min="0.2" step="0.05" value="0.25"></label></div></div>
+        <div class="form-section"><h3>Sujeción</h3><div class="form-grid four"><label>Plato<input value="3 mordazas autocentrante" readonly></label><label>Longitud fuera del plato <span class="lathe-unit-mark">(mm)</span><input id="latheStickout" class="lathe-length" type="number" min="1" step="1" value="100"></label><label>Longitud visual del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckLength" class="lathe-length" type="number" min="5" step="1" value="30"></label><label>Detalle<select id="latheQuality"><option value="low">Básico</option><option value="medium">Normal</option><option value="high">Alto</option><option value="ultra" selected>Máximo</option></select></label></div><p id="latheGripInfo" class="help-text">La cara frontal está en Z0. Las mordazas sujetan la parte de la barra que queda detrás de la longitud de salida.</p></div>
         <div class="form-section"><h3>Cero de trabajo</h3><div class="form-grid two"><label>Origen Z<select id="latheZeroMode"><option value="front" selected>Cara frontal (Z0)</option><option value="back">Cara posterior</option></select></label><label>Offset G54 en X<input id="latheOffsetX" type="number" step="0.001" value="0"></label></div><p class="help-text">La línea central del husillo corresponde a X0. En programación por diámetro, X60 coloca la punta sobre una barra de Ø60.</p></div>
         <div class="form-section"><h3>Seguridad y colisiones</h3><label class="check-row"><input id="latheSafetyEnabled" type="checkbox" checked><span>Analizar movimientos rápidos, sobrecarreras, cruce de X0 y aproximación al plato</span></label><div class="form-grid four"><label>Holgura del plato <span class="lathe-unit-mark">(mm)</span><input id="latheChuckClearance" class="lathe-length" type="number" min="0" step="0.5" value="2"></label><label>Holgura del portaherramientas <span class="lathe-unit-mark">(mm)</span><input id="latheHolderClearance" class="lathe-length" type="number" min="0" step="0.5" value="4"></label><label>Límite absoluto X <span class="lathe-unit-mark">(mm)</span><input id="latheXLimit" class="lathe-length" type="number" min="1" step="10" value="400"></label><label>Margen Z fuera de pieza <span class="lathe-unit-mark">(mm)</span><input id="latheZMargin" class="lathe-length" type="number" min="10" step="10" value="250"></label></div><p class="help-text">La detección es preventiva y aproximada. Una alarma detiene la animación si “Parar en colisión” está activado.</p></div>
       </div>
@@ -424,7 +424,7 @@
         <section class="tool-editor-panel">
           <div class="tool-standard-note"><strong>La estación y el corrector son independientes.</strong><span>El formato T0101 selecciona la herramienta 01 y activa el corrector 01.</span></div>
           <div class="lathe-tool-preview"><div class="lathe-tool-stage"><span class="lathe-preview-centerline"></span><div id="latheToolGlyph" class="lathe-tool-glyph od"><i class="lathe-holder-block"></i><i class="lathe-holder-shank"></i><i class="lathe-insert"></i></div></div><div><strong id="latheToolTitle">T0101 · Buril exterior</strong><span id="latheToolDescription">Cilindrado y refrentado exterior.</span></div></div>
-          <div class="form-section"><h3>Asignación</h3><div class="form-grid four"><label>Estación T<input id="latheToolNumber" type="number" min="1" max="99" value="1" readonly></label><label>Corrector<input id="latheToolOffset" type="number" min="0" max="99" value="1"></label><label>Tipo<select id="latheToolType"><option value="od">Buril exterior</option><option value="finish">Acabado exterior</option><option value="face">Refrentado</option><option value="groove">Ranurado</option><option value="thread">Roscado</option><option value="boring">Mandrinado</option><option value="drill">Broca axial</option></select></label><label>Orientación<select id="latheToolOrientation"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label></div></div>
+          <div class="form-section"><h3>Asignación</h3><div class="form-grid four"><label>Estación T<input id="latheToolNumber" type="number" min="1" max="99" value="1" readonly></label><label>Corrector<input id="latheToolOffset" type="number" min="0" max="99" value="1"></label><label>Tipo<select id="latheToolType"><option value="od">Buril exterior</option><option value="finish">Acabado exterior</option><option value="face">Refrentado</option><option value="groove">Ranurado</option><option value="thread">Roscado</option><option value="boring">Mandrinado</option><option value="drill">Broca axial</option></select></label><label>Orientación<select id="latheToolOrientation"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></label></div></div>
           <div class="form-section"><h3>Geometría</h3><div class="form-grid three"><label>Nombre<input id="latheToolName" value="Buril exterior 80°"></label><label>Radio de punta <span class="lathe-tool-unit">(mm)</span><input id="latheNoseRadius" type="number" min="0" step="0.01" value="0.8"></label><label>Ancho de inserto <span class="lathe-tool-unit">(mm)</span><input id="latheInsertWidth" type="number" min="0.1" step="0.1" value="6"></label></div></div>
         </section>
       </div>
@@ -449,11 +449,27 @@
   </dialog>
 
   <div id="toast" class="toast hidden"></div>
-  <script src="js/i18n.js?v=6.0.2"></script>
-  <script type="module" src="js/app.js?v=6.0.2"></script>
+  <script src="js/i18n.js?v=6.2.0"></script>
+  <script type="module" src="js/app.js?v=6.2.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+      window.addEventListener('load', async () => {
+        const local = ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
+        if (local) {
+          const scope = new URL('./', location.href).href;
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          const own = registrations.filter(registration => registration.scope === scope);
+          const controlled = Boolean(navigator.serviceWorker.controller) && own.length > 0;
+          await Promise.all(own.map(registration => registration.unregister()));
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.filter(key => key.startsWith('cncvexa-shell-')).map(key => caches.delete(key)));
+          }
+          if (controlled) location.reload();
+          return;
+        }
+        navigator.serviceWorker.register('./sw.js');
+      });
     }
   </script>
 </body>

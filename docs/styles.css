@@ -303,3 +303,10 @@ button:hover{background:#202c32;border-color:#5b6b74}
   .sim-toolbar [data-action="fitView"],.sim-toolbar [data-action="fitStock"],.mobile-zoom-button,.speed-control{display:none!important}
   .sim-toolbar{gap:4px}.transport button,.display-modes button,.toolbar-button,.expand-button{min-width:34px;padding:0 6px}.sim-options summary{height:32px;padding:0 7px}.sim-options summary span{display:none}
 }
+
+
+.vertex-tooltip{position:fixed;z-index:1000;pointer-events:none;max-width:min(380px,calc(100vw - 16px));background:#17232e;color:#edf4f8;border:1px solid #526b80;border-radius:7px;padding:10px 12px;box-shadow:0 5px 20px #0004;font:12px system-ui}
+.vertex-tooltip>div+div{border-top:1px solid #415362;margin-top:7px;padding-top:7px}
+.vertex-tooltip strong,.vertex-tooltip code,.vertex-tooltip span{display:block}.vertex-tooltip strong{color:#ffda62;margin-bottom:4px}.vertex-tooltip code{white-space:pre-wrap;overflow-wrap:anywhere;margin-bottom:5px;font-size:12px}.vertex-tooltip span{font:11px ui-monospace,monospace;color:#c5dbe8;white-space:pre-wrap}
+
+.speed-control output{width:43px;text-align:right}

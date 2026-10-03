@@ -32,6 +32,20 @@ The application runs completely in the browser and can be used through GitHub Pa
 
 ---
 
+## Playback and detail
+
+- Playback ranges from **1× to 1000×**. At 1×, motion follows program feed F, units and feed mode; lathe X is treated as a diameter. The machine model uses 12,000 mm/min rapids, independently of F.
+- **Single block / F10** runs the next source block and pauses at its end. An arc or canned cycle remains a single block despite its generated segments.
+- The 2D view distinguishes pending and completed paths. Running a completed program restarts the animation.
+- Hovering over a 2D line highlights its source block and shows the code and endpoint XYZ coordinates. Arcs highlight as a complete block.
+- Hovering over a 2D vertex shows its line, source code and XYZ coordinates in millimetres. Coincident vertices show their different Z values and source lines.
+- 3D cutters follow the configured diameter, length and angle, with recessed helical flutes, ball tips, drill points and face mill inserts. Turning tools have distinct exterior/finishing, groove and threading inserts, boring bars and axial drills.
+- Basic, Normal, High and Maximum change the stock and tool meshes; Maximum retains every material sample, while Basic uses a lighter mesh and flat shading. Changing detail preserves the machined stock.
+- **Maximum** is the default detail: 0.5 mm milling removal resolution and 0.25 mm lathe profile resolution. Saved project resolutions are preserved.
+- Material removal runs in a Worker with bounded processing batches. WebGL 2 draws the surface and volumetric tools, with Canvas rendering as a fallback.
+
+Movement timing models program feed; it does not include axis acceleration or all auxiliary times of a specific machine. Milling retains a surface height model and cannot represent lateral undercuts or enclosed internal cavities.
+
 ## Simulation modes
 
 ### Milling
@@ -205,6 +219,16 @@ No Python installation or always-on server is required.
 ### Install as an app
 
 CNCVexa includes a web app manifest and offline support. In Chrome or Edge, use the **Install CNCVexa** icon in the address bar; on Android, choose **Install app** or **Add to Home screen**.
+
+---
+
+## Local use
+
+Extract the complete ZIP. On Windows, run `Iniciar CNCVexa.bat` in the app package or `Iniciar_CNCVexa.bat` in the repository. Python 3.8 or later is required.
+
+The launcher serves its own copy, selects an available port and opens the browser after the server is ready. Keep the server window open. You can also run `python iniciar_cncvexa.py` from the launcher directory.
+
+The local copy avoids stale version caches; offline support remains enabled on the published site.
 
 ---
 

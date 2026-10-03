@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cncvexa-shell-v6.0.2';
+const CACHE_NAME = 'cncvexa-shell-v6.2.0';
 const APP_SHELL = [
   './',
   './index.html',
@@ -19,7 +19,11 @@ const APP_SHELL = [
   './js/lathe-simulator.js',
   './js/simulation-worker.js',
   './js/simulation-worker-client.js',
-  './js/simulator.js'
+  './js/simulator.js',
+  './js/playback.js',
+  './js/vertex-inspector.js',
+  './js/surface-renderer.js',
+  './js/cutter-mesh.js'
 ];
 
 self.addEventListener('install', event => {

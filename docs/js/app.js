@@ -1,9 +1,12 @@
-import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=6.0.2';
-import {CNCInterpreter} from './interpreter.js?v=6.0.2';
-import {StockSimulator} from './simulator.js?v=6.0.2';
-import {LatheInterpreter} from './lathe-interpreter.js?v=6.0.2';
-import {LatheSimulator} from './lathe-simulator.js?v=6.0.2';
-import {SimulationWorkerClient} from './simulation-worker-client.js?v=6.0.2';
+import {CODES,LATHE_CODES,SUPPORT_LABELS} from './gcode-data.js?v=6.2.0';
+import {CNCInterpreter} from './interpreter.js?v=6.2.0';
+import {StockSimulator} from './simulator.js?v=6.2.0';
+import {LatheInterpreter} from './lathe-interpreter.js?v=6.2.0';
+import {LatheSimulator} from './lathe-simulator.js?v=6.2.0';
+import {SimulationWorkerClient,encodedSteps} from './simulation-worker-client.js?v=6.2.0';
+import {createKernel,processKernelBatch} from './simulation-worker.js';
+import {speedMultiplier,interpolateStep,blockEndIndex} from './playback.js';
+import {bindVertexInspector} from './vertex-inspector.js';
 
 const $=selector=>document.querySelector(selector);
 const $$=selector=>[...document.querySelectorAll(selector)];
@@ -15,7 +18,7 @@ const deepClone=value=>JSON.parse(JSON.stringify(value));
 const formatNumber=value=>{const n=Number(value);return Number.isFinite(n)?String(Number(n.toFixed(5))):String(value);};
 const UNIT_SCALE={mm:1,in:25.4};
 const TOOL_TYPES={flat:'Fresa plana',ball:'Punta bola',face:'Fresa de planeado',drill:'Broca',chamfer:'Avellanador / chaflán'};
-const DEFAULT_WORKSPACE={units:'mm',x:220,y:120,z:30,resolution:1.5,renderQuality:'high',zeroMode:'corner',position:{x:0,y:0},table:{x:600,y:400,z:40,topZ:-30,slotDirection:'x'}};
+const DEFAULT_WORKSPACE={units:'mm',x:220,y:120,z:30,resolution:.5,renderQuality:'ultra',zeroMode:'corner',position:{x:0,y:0},table:{x:600,y:400,z:40,topZ:-30,slotDirection:'x'}};
 const CUTTER_LIBRARY=[
   {id:'m-flat-3',system:'mm',type:'flat',name:'Fresa plana Ø3 mm',diameter:3,length:45},{id:'m-flat-4',system:'mm',type:'flat',name:'Fresa plana Ø4 mm',diameter:4,length:50},{id:'m-flat-5',system:'mm',type:'flat',name:'Fresa plana Ø5 mm',diameter:5,length:52},{id:'m-flat-6',system:'mm',type:'flat',name:'Fresa plana Ø6 mm',diameter:6,length:55},{id:'m-flat-8',system:'mm',type:'flat',name:'Fresa plana Ø8 mm',diameter:8,length:60},{id:'m-flat-10',system:'mm',type:'flat',name:'Fresa plana Ø10 mm',diameter:10,length:70},{id:'m-flat-12',system:'mm',type:'flat',name:'Fresa plana Ø12 mm',diameter:12,length:75},{id:'m-flat-16',system:'mm',type:'flat',name:'Fresa plana Ø16 mm',diameter:16,length:90},{id:'m-flat-20',system:'mm',type:'flat',name:'Fresa plana Ø20 mm',diameter:20,length:100},
   {id:'m-ball-3',system:'mm',type:'ball',name:'Punta bola Ø3 mm',diameter:3,length:48},{id:'m-ball-4',system:'mm',type:'ball',name:'Punta bola Ø4 mm',diameter:4,length:50},{id:'m-ball-5',system:'mm',type:'ball',name:'Punta bola Ø5 mm',diameter:5,length:55},{id:'m-ball-6',system:'mm',type:'ball',name:'Punta bola Ø6 mm',diameter:6,length:60},{id:'m-ball-8',system:'mm',type:'ball',name:'Punta bola Ø8 mm',diameter:8,length:70},{id:'m-ball-10',system:'mm',type:'ball',name:'Punta bola Ø10 mm',diameter:10,length:75},{id:'m-ball-12',system:'mm',type:'ball',name:'Punta bola Ø12 mm',diameter:12,length:80},
@@ -44,15 +47,17 @@ function createDefaultToolTable(){const table={};for(const [number,presetId] of 
 
 const editor=$('#codeEditor'),lineNumbers=$('#lineNumbers'),highlightLayer=$('#codeHighlight'),highlightCode=$('#codeHighlight code'),canvas=$('#simCanvas');
 const millSim=new StockSimulator(canvas),latheSim=new LatheSimulator(canvas);latheSim.setActive(false);let sim=millSim;
+const vertexInspector=bindVertexInspector(canvas,()=>sim);
 const appRoot=$('#appRoot'),mainArea=$('.main-area'),workbench=$('#workbench');
 
 const config={stockTop:0,stockBounds:null,workspace:deepClone(DEFAULT_WORKSPACE),offsets:{},tools:createDefaultToolTable()};
 for(let n=54;n<=59;n++)config.offsets[`G${n}`]={x:0,y:0,z:0};
-const DEFAULT_LATHE_STOCK={units:'mm',diameter:60,bore:0,length:120,stickout:100,chuckLength:30,resolution:1,renderQuality:'high',zeroMode:'front',safety:{enabled:true,chuckClearance:2,holderClearance:4,xLimit:400,zMargin:250,zMin:-370,zMax:250,stopOnCollision:true}};
+const DEFAULT_LATHE_STOCK={units:'mm',diameter:60,bore:0,length:120,stickout:100,chuckLength:30,resolution:.25,renderQuality:'ultra',zeroMode:'front',safety:{enabled:true,chuckClearance:2,holderClearance:4,xLimit:400,zMargin:250,zMin:-370,zMax:250,stopOnCollision:true}};
 const DEFAULT_LATHE_TOOLS={1:{name:'Buril exterior 80°',type:'od',noseRadius:.8,insertWidth:6,orientation:3,offset:1},2:{name:'Buril de acabado 55°',type:'finish',noseRadius:.4,insertWidth:5,orientation:3,offset:2},3:{name:'Ranurador 3 mm',type:'groove',noseRadius:.2,insertWidth:3,orientation:3,offset:3},4:{name:'Roscador 60°',type:'thread',noseRadius:.15,insertWidth:4,orientation:3,offset:4},5:{name:'Barra de mandrinar',type:'boring',noseRadius:.4,insertWidth:5,orientation:2,offset:5},6:{name:'Broca axial Ø10 mm',type:'drill',noseRadius:5,insertWidth:10,orientation:1,offset:6}};
 const latheConfig={stock:deepClone(DEFAULT_LATHE_STOCK),offsets:{},tools:deepClone(DEFAULT_LATHE_TOOLS)};for(let n=54;n<=59;n++)latheConfig.offsets[`G${n}`]={x:0,z:0};
 let machineType='mill',interpreter=new CNCInterpreter(config),compiledSteps=[],runIndex=-1,animation=null,activeAc=0,acMatches=[],sourceRevision=0,compiledRevision=-1,compileSucceeded=false;
 let simulationId=0,workerSession=null,pendingWorkerBatch=null,workerReady=false,workerFailed=false;
+let playbackProgress=0,playbackMode='continuous',blockStop=Infinity,lastPlaybackTime=0,fallbackKernel=null;
 const simulationWorker=new SimulationWorkerClient({onMessage:handleWorkerMessage,onError:handleWorkerFailure});
 const DEFAULT_PROGRAM_NAMES=new Set(['programa_cnc.nc','programa_torno.nc','cnc_program.nc','lathe_program.nc']);
 const defaultProgramName=machine=>window.CNCVexaI18n?.language==='en'?(machine==='lathe'?'lathe_program.nc':'cnc_program.nc'):(machine==='lathe'?'programa_torno.nc':'programa_cnc.nc');
@@ -168,7 +173,7 @@ function isCompilationCurrent(){return compileSucceeded&&compiledRevision===sour
 function invalidateCompilation(){
   sourceRevision++;
   if(compiledRevision<0)return;
-  stopPlayback('ready');cancelSimulationWork();compiledRevision=-1;compileSucceeded=false;compiledSteps=[];runIndex=-1;sim.resetCut();
+  stopPlayback('ready');cancelSimulationWork();compiledRevision=-1;compileSucceeded=false;compiledSteps=[];runIndex=-1;playbackProgress=0;sim.resetCut();
   $('#alarmCount').textContent='0';$('#diagnostics').innerHTML=`<div class="empty-state">${t('Sin incidencias.')}</div>`;
   $('#parseStatus').textContent=t('Sin validar');$('#parseStatus').className='';updateRunMonitor('ready');setStatus('Sin validar');
 }
@@ -196,7 +201,7 @@ function syncWorkspaceConfig(s){config.workspace=normalizeWorkspace(s);config.st
 function writeStockLength(id,mm,unit=stockDisplayUnit){$(id).value=lengthInUnit(mm,unit);}
 function refreshStockUnits(){const mark=`(${unitLabel(stockDisplayUnit)})`;$$('.unit-mark').forEach(el=>el.textContent=mark);$('#stockUnit').value=stockDisplayUnit;updatePiecePositionInfo();}
 function setStockForm(raw=config.workspace){const s=normalizeWorkspace(raw);stockDisplayUnit=s.units;writeStockLength('#tableX',s.table.x);writeStockLength('#tableY',s.table.y);writeStockLength('#tableZ',s.table.z);writeStockLength('#tableTopZ',s.table.topZ);writeStockLength('#stockX',s.x);writeStockLength('#stockY',s.y);writeStockLength('#stockZ',s.z);writeStockLength('#stockPosX',s.position.x);writeStockLength('#stockPosY',s.position.y);$('#zeroMode').value=s.zeroMode;$('#resolution').value=String(s.resolution);$('#renderQuality').value=s.renderQuality;$('#tableSlotDirection').value=s.table.slotDirection;refreshStockUnits();}
-function stockSettings(){const u=$('#stockUnit').value;return normalizeWorkspace({units:u,x:lengthToMm($('#stockX').value,u),y:lengthToMm($('#stockY').value,u),z:lengthToMm($('#stockZ').value,u),resolution:+$('#resolution').value||1.5,renderQuality:$('#renderQuality').value||'high',zeroMode:$('#zeroMode').value,position:{x:lengthToMm($('#stockPosX').value,u),y:lengthToMm($('#stockPosY').value,u)},table:{x:lengthToMm($('#tableX').value,u),y:lengthToMm($('#tableY').value,u),z:lengthToMm($('#tableZ').value,u),topZ:lengthToMm($('#tableTopZ').value,u),slotDirection:$('#tableSlotDirection').value}});}
+function stockSettings(){const u=$('#stockUnit').value;return normalizeWorkspace({units:u,x:lengthToMm($('#stockX').value,u),y:lengthToMm($('#stockY').value,u),z:lengthToMm($('#stockZ').value,u),resolution:+$('#resolution').value||.5,renderQuality:$('#renderQuality').value||'ultra',zeroMode:$('#zeroMode').value,position:{x:lengthToMm($('#stockPosX').value,u),y:lengthToMm($('#stockPosY').value,u)},table:{x:lengthToMm($('#tableX').value,u),y:lengthToMm($('#tableY').value,u),z:lengthToMm($('#tableZ').value,u),topZ:lengthToMm($('#tableTopZ').value,u),slotDirection:$('#tableSlotDirection').value}});}
 function updatePiecePositionInfo(){if(!$('#piecePositionInfo'))return;const s=stockSettings(),o=pieceOrigin(s),b=pieceBounds(s),tb={minX:-s.table.x/2,maxX:s.table.x/2,minY:-s.table.y/2,maxY:s.table.y/2},outside=b.minX<tb.minX||b.maxX>tb.maxX||b.minY<tb.minY||b.maxY>tb.maxY;const u=s.units;$('#piecePositionInfo').textContent=`Origen visual de pieza: X${lengthInUnit(o.x,u)} Y${lengthInUnit(o.y,u)} Z${lengthInUnit(o.z,u)} ${unitLabel(u)}.${outside?' Atención: una parte de la pieza queda fuera de la mesa.':''}`;$('#piecePositionInfo').classList.toggle('warning-text',outside);}
 function updateSummaries(){}
 function applyStock({compile=true,close=true,notify=true}={}){
@@ -224,7 +229,7 @@ function renderDiagnostics(){
 function compileProgram({silent=false,forRun=false}={}){
   clearTimeout(liveCompileTimer);
   stopPlayback('compiling');cancelSimulationWork();setStatus('Compilando');
-  interpreter=machineType==='lathe'?new LatheInterpreter(latheConfig).parse(editor.value).compile():new CNCInterpreter(config).parse(editor.value).compile();compiledSteps=interpreter.steps;compiledRevision=sourceRevision;runIndex=-1;
+  interpreter=machineType==='lathe'?new LatheInterpreter(latheConfig).parse(editor.value).compile():new CNCInterpreter(config).parse(editor.value).compile();compiledSteps=interpreter.steps;compiledRevision=sourceRevision;runIndex=-1;playbackProgress=0;
   renderVariables();renderDiagnostics();
   const errors=interpreter.diagnostics.filter(x=>x.type==='error').length;compileSucceeded=errors===0;
   if(!errors){sim.setPath(compiledSteps);sim.resetCut();updateHud(initialRunState());}
@@ -250,16 +255,16 @@ function syncPlaybackFrame(step,state='running'){
 }
 function cancelSimulationWork(){
   if(workerSession)simulationWorker.cancel(workerSession.id);
-  simulationId++;workerSession=null;pendingWorkerBatch=null;workerReady=false;
+  simulationId++;workerSession=null;pendingWorkerBatch=null;workerReady=false;fallbackKernel=null;lastPlaybackTime=0;
 }
 function handleWorkerFailure(){
-  workerFailed=true;workerSession=null;pendingWorkerBatch=null;workerReady=false;
+  workerFailed=true;workerSession=null;pendingWorkerBatch=null;workerReady=false;fallbackKernel=null;lastPlaybackTime=0;
 }
 function handleWorkerMessage(message){
   if(!workerSession||message.simulationId!==workerSession.id)return;
-  if(message.type==='ready'){workerReady=true;return;}
+  if(message.type==='ready'){workerReady=true;lastPlaybackTime=performance.now();return;}
   if(message.type!=='batch')return;
-  pendingWorkerBatch={...message,applyIndex:0,innerApplyIndex:0,metadataIndex:message.startIndex+1,readyToRender:false};
+  pendingWorkerBatch=prepareBatch(message);
 }
 function workerConfiguration(){
   if(machineType==='lathe')return{diameter:latheSim.cfg.diameter,length:latheSim.cfg.length,resolution:latheSim.cfg.resolution};
@@ -268,7 +273,7 @@ function workerConfiguration(){
 }
 function startWorkerSession(){
   if(!simulationWorker.available||workerFailed)return false;
-  const id=++simulationId,options={simulationId:id,machine:machineType,steps:compiledSteps,cursor:runIndex,config:workerConfiguration()};
+  const id=++simulationId,options={simulationId:id,machine:machineType,steps:compiledSteps,cursor:runIndex,progress:playbackProgress,config:workerConfiguration()};
   if(machineType==='lathe'){options.profile=latheSim.profile;options.innerProfile=latheSim.innerProfile;}else options.depth=millSim.depth;
   if(!simulationWorker.start(options))return false;
   workerSession={id,machine:machineType,revision:compiledRevision};pendingWorkerBatch=null;workerReady=false;return true;
@@ -281,48 +286,62 @@ function handleStepFeedback(step,{redraw=false}={}){
   else hideAlarm();
   return true;
 }
-function stepProgram({redraw=true,syncUi=true}={}){
-  if(!isCompilationCurrent()||!compiledSteps.length){if(!compileProgram({silent:true,forRun:true}))return false;}
-  if(runIndex>=compiledSteps.length-1){stopPlayback('complete');toast('Fin del programa');return false;}
-  const step=compiledSteps[++runIndex];sim.applyStep(step,redraw);if(syncUi)syncPlaybackFrame(step,animation?'running':'paused');
-  return handleStepFeedback(step,{redraw:!redraw});
-}
-function fallbackPlaybackTick(){
-  const amount=Math.max(1,Math.round(+$('#speedRange').value/3)),deadline=performance.now()+(sim.renderQuality==='ultra'?8:10);let lastStep=null;
-  for(let i=0;i<amount;i++){
-    if(!stepProgram({redraw:false,syncUi:false}))return;
-    lastStep=compiledSteps[runIndex];
-    if(runIndex>=compiledSteps.length-1)break;
-    if(i>0&&performance.now()>=deadline)break;
-  }
-  if(lastStep){sim.draw();syncPlaybackFrame(lastStep,'running');}
-  if(runIndex>=compiledSteps.length-1){stopPlayback('complete');setStatus(`Fin de programa · ${compiledSteps.length} movimientos`);toast('Fin del programa');refineStoppedFrame('complete');cancelSimulationWork();return;}
-  animation=requestAnimationFrame(fallbackPlaybackTick);
-}
-function nextWorkerStepLimit(speed){
-  let limit=Math.max(1,Math.round(Math.pow(Math.max(1,speed),1.18)*2));
+function playbackBatchOptions(){
+  const now=performance.now(),elapsed=lastPlaybackTime?Math.min(100,Math.max(0,now-lastPlaybackTime)):0;
+  lastPlaybackTime=now;
+  let stopIndex=blockStop;
+  if(playbackMode==='block'&&stopIndex===Infinity)stopIndex=blockStop=blockEndIndex(compiledSteps,runIndex+1);
   if(machineType==='lathe'&&$('#stopOnCollision').checked){
-    const last=Math.min(compiledSteps.length-1,runIndex+limit);
-    for(let index=runIndex+1;index<=last;index++)if(compiledSteps[index]?.collisions?.length){limit=index-runIndex;break;}
+    for(let index=runIndex+1;index<compiledSteps.length&&index<=stopIndex;index++){
+      if(compiledSteps[index].collisions?.length){stopIndex=index;break;}
+    }
   }
-  return limit;
+  return{budgetMs:8,stepLimit:2048,dirtyLimit:16000,simulatedMs:elapsed*speedMultiplier($('#speedRange').value),stopIndex};
 }
 function requestWorkerBatch(){
   if(!workerSession||!workerReady||pendingWorkerBatch||simulationWorker.pending)return;
-  const speed=clamp(Number($('#speedRange').value)||35,1,100),budgetMs=.65+speed*.0735,stepLimit=nextWorkerStepLimit(speed);
-  simulationWorker.run({simulationId:workerSession.id,budgetMs,stepLimit,dirtyLimit:14000});
+  simulationWorker.run({simulationId:workerSession.id,...playbackBatchOptions()});
+}
+function prepareBatch(message){
+  return{...message,applyIndex:0,innerApplyIndex:0,metadataIndex:message.startIndex+1};
 }
 function consumeWorkerBatch(deadline){
   const batch=pendingWorkerBatch;if(!batch)return true;
   const indices=batch.indices||new Uint32Array(),values=batch.values||new Float32Array();
   while(batch.applyIndex<indices.length){const end=Math.min(indices.length,batch.applyIndex+512);sim.applyMaterialDeltas(indices.subarray(batch.applyIndex,end),values.subarray(batch.applyIndex,end));batch.applyIndex=end;if(performance.now()>=deadline)return false;}
   if(batch.innerIndices){while(batch.innerApplyIndex<batch.innerIndices.length){const end=Math.min(batch.innerIndices.length,batch.innerApplyIndex+512);sim.applyMaterialDeltas(null,null,batch.innerIndices.subarray(batch.innerApplyIndex,end),batch.innerValues.subarray(batch.innerApplyIndex,end));batch.innerApplyIndex=end;if(performance.now()>=deadline)return false;}}
-  while(batch.metadataIndex<=batch.endIndex){sim.applyStep(compiledSteps[batch.metadataIndex],false,{skipCut:true});batch.metadataIndex++;if((batch.metadataIndex&31)===0&&performance.now()>=deadline)return false;}
-  if(!batch.readyToRender){batch.readyToRender=true;if(performance.now()>=deadline)return false;}
-  runIndex=batch.endIndex;const lastStep=compiledSteps[runIndex];pendingWorkerBatch=null;sim.draw();syncPlaybackFrame(lastStep,'running');
-  if(!handleStepFeedback(lastStep))return false;
-  if(batch.done||runIndex>=compiledSteps.length-1){stopPlayback('complete');setStatus(`Fin de programa · ${compiledSteps.length} movimientos`);toast('Fin del programa');refineStoppedFrame('complete');cancelSimulationWork();return false;}
+  while(batch.metadataIndex<=batch.endIndex){
+    const index=batch.metadataIndex++,step=compiledSteps[index];
+    sim.applyStep(step,false,{skipCut:true,index});
+    if(!handleStepFeedback(step)){runIndex=index;playbackProgress=0;sim.motion=null;pendingWorkerBatch=null;sim.draw();return false;}
+    if((batch.metadataIndex&31)===0&&performance.now()>=deadline)return false;
+  }
+  runIndex=batch.endIndex;playbackProgress=batch.progress||0;sim.motion=null;
+  let lastStep=compiledSteps[runIndex];
+  if(batch.activeIndex>=0&&playbackProgress>0){
+    lastStep=interpolateStep(compiledSteps[batch.activeIndex],playbackProgress);
+    sim.applyStep(lastStep,false,{skipCut:true,index:batch.activeIndex,partial:true});
+    sim.motion={index:batch.activeIndex,progress:playbackProgress};
+  }
+  pendingWorkerBatch=null;sim.draw();syncPlaybackFrame(lastStep,'running');
+  if(batch.done||runIndex>=compiledSteps.length-1){
+    stopPlayback('complete');setStatus(`Fin de programa · ${compiledSteps.length} movimientos`);toast('Fin del programa');refineStoppedFrame('complete');cancelSimulationWork();return false;
+  }
+  if(playbackMode==='block'&&batch.stopped){
+    stopPlayback('paused');syncPlaybackFrame(lastStep,'paused');refineStoppedFrame('paused');return false;
+  }
   return true;
+}
+function fallbackPlaybackTick(){
+  const deadline=performance.now()+9;
+  if(!fallbackKernel){
+    const options={machine:machineType,config:workerConfiguration(),stepsBuffer:encodedSteps(machineType,compiledSteps).buffer,cursor:runIndex,progress:playbackProgress};
+    if(machineType==='lathe'){options.profileBuffer=sim.profile.slice().buffer;options.innerProfileBuffer=sim.innerProfile.slice().buffer;}else options.depthBuffer=sim.depth.slice().buffer;
+    fallbackKernel=createKernel(options);lastPlaybackTime=performance.now();
+  }
+  if(!pendingWorkerBatch)pendingWorkerBatch=prepareBatch(processKernelBatch(fallbackKernel,{...playbackBatchOptions(),budgetMs:4}));
+  if(!consumeWorkerBatch(deadline)){if(animation)animation=requestAnimationFrame(fallbackPlaybackTick);return;}
+  animation=requestAnimationFrame(fallbackPlaybackTick);
 }
 function workerPlaybackTick(){
   if(workerFailed){animation=requestAnimationFrame(fallbackPlaybackTick);return;}
@@ -332,26 +351,30 @@ function workerPlaybackTick(){
   requestWorkerBatch();
   animation=requestAnimationFrame(workerPlaybackTick);
 }
-function playProgram(){
-  if(animation){pausePlayback();return;}
+function beginPlayback(mode='continuous'){
   if(!isCompilationCurrent()&&!compileProgram({silent:true,forRun:true})){toast('Corrige las alarmas antes de ejecutar','error');return;}
-  if(runIndex>=compiledSteps.length-1){cancelSimulationWork();sim.resetCut();runIndex=-1;}
   if(!compiledSteps.length){toast('El programa no contiene movimientos','error');return;}
+  if(runIndex>=compiledSteps.length-1){cancelSimulationWork();sim.resetCut();runIndex=-1;playbackProgress=0;}
+  playbackMode=mode;
+  // An in-flight batch must be consumed before choosing the next block.
+  blockStop=mode==='block'&&!pendingWorkerBatch&&!simulationWorker.pending?blockEndIndex(compiledSteps,runIndex+1):Infinity;
+  lastPlaybackTime=performance.now();
   sim.setPlaybackActive?.(true);updateRunMonitor('running');setStatus('Ejecutando');
   const canResume=workerSession&&workerSession.machine===machineType&&workerSession.revision===compiledRevision;
   if(canResume){simulationWorker.resume(workerSession.id);animation=requestAnimationFrame(workerPlaybackTick);return;}
   if(startWorkerSession()){animation=requestAnimationFrame(workerPlaybackTick);return;}
   animation=requestAnimationFrame(fallbackPlaybackTick);
 }
-function stepOnce(){cancelSimulationWork();return stepProgram();}
+function playProgram(){if(animation){pausePlayback();return;}beginPlayback('continuous');}
+function stepOnce(){if(animation)stopPlayback('paused');beginPlayback('block');}
 function stopPlayback(state='ready'){
-  if(animation)cancelAnimationFrame(animation);animation=null;if(state==='paused'&&workerSession)simulationWorker.pause(workerSession.id);sim.setPlaybackActive?.(false);updateRunMonitor(state);
+  if(animation)cancelAnimationFrame(animation);animation=null;if(state==='paused'&&workerSession)simulationWorker.pause(workerSession.id);sim.setPlaybackActive?.(false);lastPlaybackTime=0;updateRunMonitor(state);
 }
 function refineStoppedFrame(expectedState){
   setTimeout(()=>{if(!animation&&appRoot.dataset.runState===expectedState)sim.draw();},60);
 }
 function pausePlayback(){if(!animation)return;stopPlayback('paused');setStatus(`Pausa · bloque ${Math.max(0,runIndex+1)}/${compiledSteps.length}`);refineStoppedFrame('paused');}
-function resetSimulation(){stopPlayback('ready');cancelSimulationWork();sim.resetCut();runIndex=-1;hideAlarm();updateHud(initialRunState());updateRunMonitor('ready');setStatus('Preparado');}
+function resetSimulation(){stopPlayback('ready');cancelSimulationWork();sim.resetCut();runIndex=-1;playbackProgress=0;blockStop=Infinity;hideAlarm();updateHud(initialRunState());updateRunMonitor('ready');setStatus('Preparado');}
 function showAlarm(text){$('#alarmBanner').textContent=t(text);$('#alarmBanner').classList.remove('hidden');}
 function hideAlarm(){$('#alarmBanner').classList.add('hidden');}
 
@@ -552,7 +575,7 @@ function activateDock(name){$$('.dock-tab').forEach(tab=>tab.classList.toggle('a
 function toggleDock(){if(isMobileViewport()){setMobileView(appRoot.dataset.mobileView==='dock'?'editor':'dock');return;}mainArea.classList.toggle('dock-collapsed');}
 function maximizeSimulation(){if(isMobileViewport()){setMobileView('sim');return;}appRoot.classList.toggle('sim-maximized');setTimeout(()=>sim.resize(),50);}
 function setView(name){if(machineType==='mill')sim.setView(sim.viewMode==='2d'?'top':name);else sim.fitView();}
-function setDisplayMode(mode='3d'){const next=mode==='2d'?'2d':'3d';sim.setDisplayMode(next);appRoot.classList.toggle('mode-2d',next==='2d');$$('.display-modes button').forEach(button=>button.classList.toggle('active',button.dataset.display===next));if(machineType==='mill'){if(next==='2d')sim.fitView('stock',false);else{sim.setView('iso');sim.fitView('scene',false);}}else sim.fitView(false);sim.resize();}
+function setDisplayMode(mode='3d'){vertexInspector.hide();const next=mode==='2d'?'2d':'3d';sim.setDisplayMode(next);appRoot.classList.toggle('mode-2d',next==='2d');$$('.display-modes button').forEach(button=>button.classList.toggle('active',button.dataset.display===next));if(machineType==='mill'){if(next==='2d')sim.fitView('stock',false);else{sim.setView('iso');sim.fitView('scene',false);}}else sim.fitView(false);sim.resize();}
 
 let pendingHomeOpen=null;
 function showSimulator(){
@@ -592,8 +615,8 @@ function handleExternalLaunch(){
 }
 function projectMachine(project){return project?.machineType==='lathe'||project?.latheConfig?'lathe':'mill';}
 function homeNewProject(machine){
-  const type=machine==='lathe'?'lathe':'mill';switchMachine(type,{saveCurrent:true,restoreSession:false,compile:false});
-  replaceEditor('',{name:defaultProgramName(type),mark:false,reset:true});compileProgram({silent:true});setDirty(false);showSimulator();
+  const type=machine==='lathe'?'lathe':'mill';showSimulator();switchMachine(type,{saveCurrent:true,restoreSession:false,compile:false});
+  replaceEditor('',{name:defaultProgramName(type),mark:false,reset:true});compileProgram({silent:true});setDirty(false);requestAnimationFrame(()=>editor.focus({preventScroll:true}));
 }
 function homeOpen(kind,machine){pendingHomeOpen={kind,machine:machine==='lathe'?'lathe':'mill'};$(kind==='project'?'#projectFileInput':'#programFileInput').click();}
 function normalizeProgramName(value){
@@ -614,7 +637,7 @@ function finishFileNameEdit(cancel=false){
 }
 
 const actions={
-  newProgram:()=>replaceEditor('',{name:defaultProgramName(machineType),mark:true,reset:true}),
+  newProgram:()=>homeNewProject(machineType),
   openProgram:()=>$('#programFileInput').click(),saveProgram,openProject:()=>$('#projectFileInput').click(),saveProject,saveLocal:()=>saveLocal(true),loadLocal,
   undo,redo,format:formatCode,autocomplete:()=>{editor.focus();showAutocomplete(true);},selectAll:()=>{editor.focus();editor.select();updateEditorChrome();},
   stockSetup:openStockDialog,offsetSetup:openOffsetDialog,toolSetup:openToolDialog,
@@ -657,9 +680,10 @@ $('#programName').addEventListener('blur',()=>finishFileNameEdit(false));
 
 $$('.display-modes button').forEach(button=>button.addEventListener('click',()=>setDisplayMode(button.dataset.display)));
 $$('.dock-tab').forEach(button=>button.addEventListener('click',()=>activateDock(button.dataset.dock)));
-$('#speedRange').addEventListener('input',event=>$('#speedOut').textContent=`${event.target.value}×`);
-$('#showRapids').addEventListener('change',event=>{sim.showRapids=event.target.checked;sim.draw();queueAutosave();});
-$('#showCuts').addEventListener('change',event=>{sim.showCuts=event.target.checked;sim.draw();queueAutosave();});
+function updateSpeedLabel(){const speed=speedMultiplier($('#speedRange').value);$('#speedOut').textContent=`${speed<10?Number(speed.toFixed(1)):Math.round(speed)}×`;}
+$('#speedRange').addEventListener('input',updateSpeedLabel);updateSpeedLabel();
+$('#showRapids').addEventListener('change',event=>{vertexInspector.hide();sim.showRapids=event.target.checked;sim.draw();queueAutosave();});
+$('#showCuts').addEventListener('change',event=>{vertexInspector.hide();sim.showCuts=event.target.checked;sim.draw();queueAutosave();});
 $('#showGrid').addEventListener('change',event=>{sim.showGrid=event.target.checked;sim.draw();});
 $('#showTable').addEventListener('change',event=>{sim.showTable=event.target.checked;sim.draw();});
 $('#renderQuality').addEventListener('change',event=>{cancelSimulationWork();if(machineType==='lathe')latheConfig.stock.renderQuality=event.target.value;else config.workspace.renderQuality=event.target.value;sim.setRenderQuality(event.target.value);sim.draw();queueAutosave();});
