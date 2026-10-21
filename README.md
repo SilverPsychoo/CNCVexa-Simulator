@@ -122,6 +122,10 @@ T0101
 
 donde los primeros dos dígitos identifican la estación y los últimos dos el corrector.
 
+G72 desbasta desde la posición actual hacia el límite axial del bloque P y conserva los sobremateriales U/W. G70 utiliza los avances del perfil P–Q. Los perfiles G72 que invierten X generan una advertencia en el bloque correspondiente; el tipo II continúa siendo una aproximación. La detección de colisiones depende del diámetro, longitud y sujeción de la barra configurada.
+
+El programa de regresión `tests/fixtures/O0003.nc` se prueba con barras de Ø30 y Ø60 mm. La llegada rápida a la superficie Z0 no se considera una penetración en la barra. `npm test` verifica los ciclos, las alarmas de entrada en material, la actualización de caché, la reproducción continua y por bloques, la remoción de material y el renderizado.
+
 ---
 
 ## Editor CNC

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cncvexa-shell-v6.2.0';
+const CACHE_NAME = 'cncvexa-shell-v6.2.2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const APP_SHELL = [
   './assets/icon-192.png',
   './assets/icon-512.png',
   './js/app.js',
+  './js/bootstrap.js',
   './js/expression.js',
   './js/gcode-data.js',
   './js/i18n.js',
@@ -39,6 +40,20 @@ self.addEventListener('activate', event => {
   );
 });
 
+async function fetchCurrent(request){
+  const cache=await caches.open(CACHE_NAME);
+  try{
+    const response=await fetch(request,{cache:'no-cache'});
+    if(response.ok){try{await cache.put(request,response.clone());}catch{}}
+    return response;
+  }catch{
+    const cached=await cache.match(request)||await cache.match(request,{ignoreSearch:true});
+    if(cached)return cached;
+    if(request.mode==='navigate')return cache.match('./index.html');
+    throw new Error('Recurso no disponible');
+  }
+}
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -46,29 +61,5 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request, { ignoreSearch: true }).then(response => response || caches.match('./index.html')))
-    );
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request, { ignoreSearch: true }).then(cached => {
-      if (cached) return cached;
-      return fetch(request).then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-        }
-        return response;
-      });
-    })
-  );
+  event.respondWith(fetchCurrent(request));
 });

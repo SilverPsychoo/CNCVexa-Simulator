@@ -1056,6 +1056,9 @@
   });
 
   const dynamicRules = [
+    [/^G(\d+) requiere una profundidad de pasada mayor que cero$/, 'G$1 requires a pass depth greater than zero'],
+    [/^G(\d+) excede el límite de 10000 pasadas$/, 'G$1 exceeds the 10000-pass limit'],
+    [/^G73 requiere entre 1 y 10000 repeticiones$/, 'G73 requires between 1 and 10000 repetitions'],
     [/^G(\d+(?:\.\d+)?) requiere Z$/, 'G$1 requires Z'],
     [/^G(\d+(?:\.\d+)?) requiere Q$/, 'G$1 requires Q'],
     [/^G71 Tipo I · (\d+) pasadas · profundidad radial (.+)$/, 'G71 Type I · $1 passes · radial depth $2'],

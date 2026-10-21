@@ -1,8 +1,9 @@
 {
   "name": "cncvexa-simulator",
+  "version": "6.2.2",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/smoke.mjs && node tests/playback.mjs && node tests/rendering.mjs"
+    "test": "node tests/smoke.mjs && node tests/lathe-cycles.mjs && node tests/cache.mjs && node tests/playback.mjs && node tests/rendering.mjs"
   }
 }

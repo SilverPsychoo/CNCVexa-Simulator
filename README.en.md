@@ -121,6 +121,10 @@ T0101
 
 where the first two digits identify the turret station and the last two identify the offset.
 
+G72 roughs from the current position towards the axial limit in block P and preserves U/W finishing allowances. G70 uses the feeds in the P–Q profile. G72 profiles that reverse X raise a warning at the relevant block; Type II remains an approximation. Collision detection depends on the configured stock diameter, length, and workholding.
+
+The regression program `tests/fixtures/O0003.nc` uses Ø30 and Ø60 mm blanks. A rapid approach to the Z0 surface is not treated as stock penetration. `npm test` checks cycles, stock penetration alarms, cache updates, continuous and single-block playback, material removal, and rendering.
+
 ---
 
 ## CNC editor
